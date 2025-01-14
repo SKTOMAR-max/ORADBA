@@ -1,0 +1,95 @@
+==================
+= OMS Start/Stop =
+==================
+
+
+========
+= STOP =
+========
+OMS Console : https://10.23.40.10:7803/em
+Create blackout from the console for all resorces
+
+Enterprise >> Monitoring, >> Blackouts >> 
+Create >> Choose Blackout Option >> <BLACKOUT_NAME> 
+>> Enable Full Blackout >> Select All Resources >> End Time [Infinite] 
+>> Submit
+
+
+=> STOP OMS 
+Host	: am01lxpora0015.ad.corpnet4.net 
+cd /u01/app/oms/em13c/oraclehome/bin
+./emctl status oms
+./emctl stop oms -all
+./emctl status oms
+
+
+
+=> STOP OEM Agent:
+am01lxpora0015.ad.corpnet4.net
+cd /u01/app/oms/em13c/agentbase/agent_13.5.0.0.0/bin
+./emctl status agent
+./emctl stop agent
+./emctl status agent
+
+am01lxpora0018.ad.corpnet4.net
+cd /u01/app/oms/em13c/agentbase/agent_13.5.0.0.0/bin
+./emctl status agent
+./emctl stop agent
+./emctl status agent
+
+
+
+=> STOP OMS Database:
+Bring down both the database (Primary & Standby)
+am01lxpora0015.ad.corpnet4.net 	: 	Primary
+am01lxpora0018.ad.corpnet4.net	:	Standby
+
+
+
+
+
+
+=========
+= START =
+=========
+
+=> START OMS Database:
+Bring up both the database (Primary & Standby)
+am01lxpora0015.ad.corpnet4.net 	: 	Primary
+am01lxpora0018.ad.corpnet4.net	:	Standby
+
+
+
+=> START OEM Agent:
+am01lxpora0015.ad.corpnet4.net
+cd /u01/app/oms/em13c/agentbase/agent_13.5.0.0.0/bin
+./emctl status agent
+./emctl start agent
+./emctl status agent
+
+am01lxpora0018.ad.corpnet4.net
+cd /u01/app/oms/em13c/agentbase/agent_13.5.0.0.0/bin
+./emctl status agent
+./emctl start agent
+./emctl status agent
+
+
+
+=> START OMS 
+Host	: am01lxpora0015.ad.corpnet4.net 
+cd /u01/app/oms/em13c/oraclehome/bin
+./emctl status oms
+./emctl start oms
+./emctl status oms
+./emctl status oms -details
+
+
+
+
+OMS Console : https://10.23.40.10:7803/em
+END blackout from the console for all resorces, if activity has been completed.
+
+Enterprise >> Monitoring, >> Blackouts >> 
+Select Blackout <BLACKOUT_NAME>  >> 
+>> Stop >> Submit
+
