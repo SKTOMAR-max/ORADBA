@@ -1,0 +1,241 @@
+
+To Genrate Fake Alert from the DB:
+execute sys.dbms_system.ksdwrt(2,to_char(sysdate)|| 'ORA-00600: Testing, Please Ignore!');
+ execute sys.dbms_system.ksdwrt(2,to_char(sysdate)|| 'ORA-06512: test for alert');
+
+
+SQL> set time on
+16:20:53 SQL>
+
+
+SQL> set sqlprompt SQL19c>
+SQL19c>
+
+set sqlprompt &tdate
+set time on
+
+set sqlprompt '&_user.@&_connect_identifier.> '
+
+
+SQL> set sqlprompt 'SANDEEP> '
+SANDEEP>
+
+====================================================
+Kill a session on other node-
+select 'alter system kill session ''' ||sid|| ',' || serial#|| ', @1'' immediate;' from gv$session where INST_ID=1 and USERNAME='M12211' and STATUS='INACTIVE';
+
+
+====================================================
+@?/rdbms/admin/utlrp.sql
+@utlprp.sql 12   */ parallelism /*
+
+
+==================
+== Database Status ==
+==================
+
+set lines 200
+col username for a15
+col machine for a40
+col osuser for a15
+col program for a30
+col HOST_NAME for a20
+
+
+Select INST_ID, INSTANCE_NAME, HOST_NAME, STARTUP_TIME, STATUS, THREAD#, ARCHIVER, LOGINS, DATABASE_STATUS from gv$instance order by 1;
+select name,open_mode,database_role from gv$database;
+
+select INSTANCE_NUMBER,INSTANCE_NAME,DB_NAME,HOST_NAME,STARTUP_TIME from dba_hist_database_instance;
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+prompt
+set serveroutput on size 1000000
+set linesize 512
+set trimspool on
+begin
+     for x in ( select host_name,db.name as name,db.DB_UNIQUE_NAME as DB_UNIQUE_NAME,instance_name,version,to_char(startup_time,'DD-MON-YYYY HH24:MI:SS') as started,
+     logins, db.database_role as db_role,db.open_mode as open_mode,SWITCHOVER_STATUS, INSTANCE_NUMBER,INSTANCE_ROLE, LOG_MODE, FLASHBACK_ON,
+     FORCE_LOGGING,floor(sysdate - startup_time) || trunc( 24*((sysdate-startup_time) - trunc(sysdate-startup_time)))
+     || ' hour(s) ' || mod(trunc(1440*((sysdate-startup_time) - trunc(sysdate-startup_time))), 60) ||' minute(s) '
+     || mod(trunc(86400*((sysdate-startup_time) - trunc(sysdate-startup_time))), 60) ||' seconds' uptime
+                from
+                gv$instance , gv$database db
+                where
+                gv$instance.inst_id=db.inst_id )
+     loop
+             dbms_output.put_line( CHR(13) || CHR(10));
+             dbms_output.put_line( 'HOSTNAME             : '||x.host_name);
+             dbms_output.put_line( 'DATABASE NAME        : '||x.name);
+             dbms_output.put_line( 'DATABASE UNIQUE NAME : '||x.db_unique_name);
+             dbms_output.put_line( 'DATABASE VERSION     : '||x.version);
+             dbms_output.put_line( 'DATABASE ROLE        : '||x.db_role);
+             dbms_output.put_line( 'OPEN MODE            : '||x.open_mode);
+             dbms_output.put_line( 'INSTANCE #           : '||x.instance_number);
+             dbms_output.put_line( 'INSTANCE NAME        : '||x.instance_name);
+             dbms_output.put_line( 'INSTANCE ROLE        : '||x.instance_role);
+             dbms_output.put_line( 'LOGINS               : '||x.logins);
+             dbms_output.put_line( 'SWITCH-OVER          : '||x.switchover_status);
+             dbms_output.put_line( 'LOG MODE             : '||x.log_mode);
+			 dbms_output.put_line( 'FLASHBACK STATUS     : '||x.flashback_on);
+             dbms_output.put_line( 'FORCE LOGGING        : '||x.force_logging);
+             dbms_output.put_line( 'STARTED AT           : '||x.started);
+             dbms_output.put_line( 'UPTIME               : '||x.uptime);
+             dbms_output.put_line( CHR(13) || CHR(10));
+     end loop;
+end;
+/
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+set lines 300;
+set pages 300;
+col host_name for a10
+select distinct name,open_mode,log_mode,logins,host_name,startup_time,database_role from gv$database,gv$instance;
+
+
+
+
+*****Metadata*****
+
+set pages 0 
+set serverout on size 1000000 
+set long 500000 
+select dbms_metadata.get_ddl('INDEX','CPL_USR_FK_I','CTIPR2DB') from dual ;
+
+set pages 0 
+set serverout on size 1000000 
+set long 500000 
+select dbms_metadata.get_ddl('DATABASE','PDB1') from dual ;
+
+
+
+nohup sqlplus "/ as sysdba" @drop_user.sql &
+
+
+============================
+= crontab backup & comment =
+============================
+
+$crontab -l > crontab_bk
+$crontab -e
+To Disabled Entry $:%s/^/##CHG000003937916##/g then enter then Esc :wq
+To Enable Entry $:%s/##CHG000003937916##//g
+
+
+
+
+
+*****Kill Session*****
+
+select 'alter system kill session '''|| sid ||','|| serial# ||''' immediate ; '
+from v$session where username='CTIPR2DB';
+
+
+******Top Memory Consuming Process******
+ps -eo pmem,pcpu,vsize,pid,cmd | sort -k 1 -nr | head -10
+
+ps -o pid,user,%mem,size,command ax | sort -b -k3 -r |grep ora*
+# pmap -x 681342
+#pstack 681342
+
+*****Kill Oracle Local session*****
+
+kill -9 `ps -ef | grep LOCAL=NO | grep $ORACLE_SID | grep -v grep | awk '{print $2}'`
+
+
+*****Memory*****
+
+SQL> select to_char(sysdate,'mm/dd/yyyy hh24:mi:ss'),pool,name,bytes from v$sgastat where pool like 'sga%'
+and name in ('KGLDA','KGLHD','KGLH0','free memory','SQLA') order by name;
+
+
+TO_CHAR(SYSDATE,'MM POOL         NAME                            BYTES
+------------------- ------------ -------------------------- ----------
+05/13/2018 22:13:20 shared pool  KGLDA                        12924816
+05/13/2018 22:13:20 shared pool  KGLH0                       305395496
+05/13/2018 22:13:20 shared pool  KGLHD                        37240696
+05/13/2018 22:13:20 shared pool  SQLA                       1092807192
+05/13/2018 22:13:20 shared pool  free memory                 351707896
+
+
+
+*****Viewing Memory Use for Each User Session*****
+
+SELECT USERNAME, VALUE || 'bytes' "Current UGA memory"
+   FROM V$SESSION sess, V$SESSTAT stat, V$STATNAME name
+WHERE sess.SID = stat.SID
+   AND stat.STATISTIC# = name.STATISTIC#
+   AND name.NAME = 'session uga memory';
+
+
+*****Getting the last data update time of a specific table in Oracle*****
+select timestamp from dba_tab_modifications where table_name ='CUSTOMER_CONSENT_AUDIT' and table_owner='CMPGRID';
+
+
+==================
+User locked issue:
+==================
+
+oerr ora 28000
+28000, 00000, "the account is locked"
+*Cause: The user has entered wrong password consequently for maximum
+number of times specified by the user's profile parameter
+FAILED_LOGIN_ATTEMPTS, or the DBA has locked the account
+*Action: Wait for PASSWORD_LOCK_TIME or contact DBA 
+
+oerr ora 1017
+01017, 00000, "invalid username/password; logon denied"
+*Cause:
+*Action: 
+
+
+select OS_USERNAME, USERNAME , USERHOST, RETURNCODE, TO_CHAR(TIMESTAMP,'MM/DD HH24:MI') TIMESTAMP
+from dba_audit_session
+where to_date(TIMESTAMP, 'DD-Mon-YY') in (select to_date(TIMESTAMP, 'DD-Mon-YY')
+from dba_audit_session
+where to_date(TIMESTAMP,'DD-Mon-YY') = to_date(sysdate, 'DD-Mon-YY'))
+and RETURNCODE in (1017, 28000) order by 5;
+
+&&&&&&&
+
+SELECT
+  TO_CHAR(TIMESTAMP,'MM/DD HH24:MI') TIMESTAMP,
+  SUBSTR(OS_USERNAME,1,20) OS_USERNAME,
+  SUBSTR(USERNAME,1,20) USERNAME,
+  SUBSTR(TERMINAL,1,20) TERMINAL,
+  ACTION_NAME,
+  RETURNCODE
+FROM
+  SYS.DBA_AUDIT_SESSION
+WHERE
+  USERNAME LIKE 'CRAMER%'
+  AND TIMESTAMP BETWEEN SYSDATE-1 AND SYSDATE
+  and RETURNCODE in (1017, 28000)
+ORDER BY
+  TIMESTAMP ;
+
+can check in aud file also-
+
+grep -i CRAMER * | grep 1017
+grep -i CRAMER * | grep 28000
+
+
+
+TEMP TABLESPACE USAGE:
+
+select sum(gb_used) from
+(
+SELECT S.sid || ',' || S.serial# sid_serial, S.username, S.osuser, P.spid, S.module,
+P.program, SUM (T.blocks) * TBS.block_size / 1024 / 1024 /1024 gb_used, T.tablespace,
+COUNT(*) statements
+FROM gv$sort_usage T, gv$session S, dba_tablespaces TBS, gv$process P
+WHERE T.session_addr = S.saddr
+AND S.paddr = P.addr
+AND T.tablespace = TBS.tablespace_name
+GROUP BY S.sid, S.serial#, S.username, S.osuser, P.spid, S.module, P.program, TBS.block_size, T.tablespace
+ORDER BY gb_used desc, sid_serial
+)

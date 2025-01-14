@@ -1,0 +1,232 @@
+
+DGMGDL Login :
+
+$ dgmgrl /       or  (dgmgrl sys/'XXXXXX'@NBRZ1)
+DGMGRL>
+
+Step 1
+=============
+DGMGRL> Show configuration
+DGMGRL> Show observer 
+
+Disable FSFO
+================
+DGMGRL> disable fast_start failover                 #FSFO Must be disable before bring down Primary & Standby's
+
+================
+DGMGRL> Show observer (Check FSFO disable status)
+DGMGRL> Show configuration                          # Take Screenshot    
+
+
+Step 2
+==============
+DGMGRL> Stop observer "Observer Name"  (backup)
+DGMGRL> Stop observer "Observer Name"  (master)
+
+
+Step 3
+================
+Check the Log sync in between Primary, HA and DR
+-------------------------------------------------
+Run on Primary DB 
+-------------------------------------------------
+select vdb.name,vdb.database_role, max(sequence#) "Last Primary Seq Generated"
+from v$archived_log val, v$database vdb
+where val.resetlogs_change# = vdb.resetlogs_change#
+group by vdb.name,vdb.database_role;
+
+Run on Standby & HA DB  
+-------------------------------------------------
+SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference"
+FROM
+(SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH,
+(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL
+WHERE ARCH.THREAD# = APPL.THREAD# ORDER BY 1;
+
+                				    # Take Screenshot 
+
+Step 4
+=========
+DR / Standby ->
+Listener Status   Check
+----------------------------
+$ lsnrctl status
+
+Database Status	Check
+---------------------------
+set lines 5000;
+set pages 5000;
+col host_name for a20;
+select name,host_name,DB_UNIQUE_NAME,open_mode, database_role from v$database,v$instance;
+
+Stop the MRP
+=============
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+
+Stop the Database
+--------------------
+SQL> shut immediate
+
+Stop Listener
+----------------
+$ lsnrctl stop
+
+Step 5
+=========
+HA  ->
+
+Listener Status   Check
+------------------------
+$ lsnrctl status
+
+Database Status	Check
+------------------------
+set lines 5000;
+set pages 5000;
+col host_name for a20;
+select name,host_name,DB_UNIQUE_NAME,open_mode, database_role from v$database,v$instance;
+
+
+Stop the MRP
+-----------------
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;   
+
+Stop the Database 
+-----------------
+SQL > shut immediate
+
+Stop Listener
+-------------------
+$ lsnrctl stop
+
+Step 6
+============
+PRIMARY -->
+
+Listener Status   Check
+-----------------------------
+$ lsnrctl status
+
+Database Status	Check
+----------------------------
+set lines 5000;
+set pages 5000;
+col host_name for a20;
+select name,host_name,DB_UNIQUE_NAME,open_mode, database_role from v$database,v$instance;
+
+
+Stop the Database
+-----------------
+SQL> shut immediate
+
+Stop Listener
+-----------------
+$ lsnrctl stop
+
+============================================================
+HAND OVER TO Infra Team =============>  for Patch Activity =
+============================================================
+
+Startup Process
+==================
+
+Step 1
+===========
+Start Listener 
+------------------
+Primary -> HA - DR
+
+$ lsnrctl start
+
+Step 2
+============
+Primary
+
+SQL> startup   #Check DB status
+
+Step 3
+============
+HA
+----------
+SQL> Startup nomount
+SQL> alter database mount standby database;
+
+
+Start MRP
+-------------
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION;
+
+Step 4
+============
+DR
+-----------
+SQL Startup nomount
+SQL> alter database mount standby database;
+
+
+Start MRP
+------------
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION;
+
+Step 5
+==============
+Check the Log sync in between Primary   Ha and DR
+-------------------------------------------------------
+Run on Primary DB 
+-------------------------------------------------
+select vdb.name,vdb.database_role, max(sequence#) "Last Primary Seq Generated"
+from v$archived_log val, v$database vdb
+where val.resetlogs_change# = vdb.resetlogs_change#
+group by vdb.name,vdb.database_role;
+
+Run on Standby & HA DB  
+-------------------------------------------------
+SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference"
+FROM
+(SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH,
+(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL
+WHERE ARCH.THREAD# = APPL.THREAD# ORDER BY 1;
+
+
+Do 3 /4   log switch  at Primary
+----------------------------------
+SQL> alter system switch logfile;
+
+Again Check the Log sync in between Primary, HA and DR By Using above query   # Take Screenshot 
+
+Step 6
+============
+Observer
+--------------
+DGMGRL >
+
+DGMGRL > Show configuration
+DGMGRL > Show observer
+ 
+Enable FSFO
+------------
+DGMGRL > enable  fast_start failover
+
+Show observer (Check FSFO enable status)     # Take Screenshot 
+------------------------------------------
+
+DGMGRL > Show configuration
+
+Step 7
+=============
+Start observer (Master)  login to the master observer VM
+---------------------------
+$ nohup dgmgrl -silent -logfile /oracle/VER/19/dbs/log/observer.log sys/W31come123@NBRZ1 "start observer" &
+
+
+Start observer (Backup) login to the backup observer VM
+--------------------------
+$  nohup dgmgrl -silent -logfile /oracle/VER/19/dbs/log/observer.log sys/'XXXXXX'@NBRZ1 "start observer" &
+
+check the final Observer and configuration status
+====================================================
+DGMGRL> Show configuration
+DGMGRL> Show observer 
+
+
+

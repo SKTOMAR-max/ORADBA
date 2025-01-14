@@ -1,0 +1,301 @@
+-----------------------------
+-- A report of all grantee --
+-----------------------------
+set pagesize 2000
+set echo off
+set feed off
+set verify off
+
+-- Users list
+ttitle 'All users'
+select username "Users"
+  from dba_users
+ where username not in ('SYS','SYSTEM','OUTLN',
+                        'DBSNMP','SCOTT','DB_CONTROL',
+                        'OPS$ORACLE','XXX')
+/
+
+-- All user's granted
+break on user skip 1 on user
+col user format a15
+col grant format a30
+ttitle 'All users granted'
+select grantee "User" ,granted_role "Grant", 'role' "Type" 
+  from dba_role_privs
+ where grantee in (select username from dba_users
+                    where username not in ('SYS','SYSTEM',
+'OUTLN','DBSNMP','SCOTT','DB_CONTROL','OPS$ORACLE','XXX'))
+   and granted_role not in ('CONNECT')
+union all
+select grantee "User", privilege "Grant", 'priv' "Type" 
+  from dba_sys_privs
+ where grantee in (select username from dba_users
+                    where username not in ('SYS','SYSTEM',
+'OUTLN','DBSNMP','SCOTT','DB_CONTROL','OPS$ORACLE','XXX'))
+   and privilege not in ('CONNECT')
+union all
+select grantee "User", owner||'.'||table_name "Grant", lower(privilege)
+"Type"
+  from dba_tab_privs 
+ where grantee in (select username from dba_users
+                    where username not in ('SYS','SYSTEM',
+'OUTLN','DBSNMP','SCOTT','DB_CONTROL','OPS$ORACLE','XXX'))
+order by 1
+/
+
+-- All role's granted
+break on role skip 1 on role
+col role format a15
+col grant format a30
+ttitle 'All roles granted'
+select grantee "Role", granted_role "Grant", 'role' "Type" 
+  from dba_role_privs
+ where grantee not in (select username from dba_users)
+   and grantee not in ('EXECUTE_CATALOG_ROLE','EXP_FULL_DATABASE','DBA',
+                       'IMP_FULL_DATABASE','SELECT_CATALOG_ROLE',
+                       'AQ_ADMINISTRATOR_ROLE','CONNECT',
+                       'HS_ADMIN_ROLE','DELETE_CATALOG_ROLE',
+                       'AQ_USER_ROLE','RECOVERY_CATALOG_OWNER',
+                       'SNMPAGENT')
+   and granted_role not in ('CONNECT')
+union all
+select grantee "Role", privilege "Grant", 'priv' "Type" 
+  from dba_sys_privs
+ where grantee not in (select username from dba_users)
+   and grantee not in ('EXECUTE_CATALOG_ROLE','EXP_FULL_DATABASE','DBA',
+                       'IMP_FULL_DATABASE','SELECT_CATALOG_ROLE',
+                       'AQ_ADMINISTRATOR_ROLE','CONNECT',
+                       'HS_ADMIN_ROLE','DELETE_CATALOG_ROLE',
+                       'AQ_USER_ROLE','RECOVERY_CATALOG_OWNER',
+                       'SNMPAGENT')
+union all
+select grantee "Role", owner||'.'||table_name "Grant", lower(privilege)
+"Type"
+  from dba_tab_privs 
+ where grantee not in (select username from dba_users)
+   and grantee not in ('EXECUTE_CATALOG_ROLE','EXP_FULL_DATABASE','DBA',
+                       'IMP_FULL_DATABASE','SELECT_CATALOG_ROLE',
+                       'AQ_ADMINISTRATOR_ROLE','CONNECT','PUBLIC',
+                       'HS_ADMIN_ROLE','DELETE_CATALOG_ROLE',
+                       'AQ_USER_ROLE','RECOVERY_CATALOG_OWNER',
+                       'SNMPAGENT')
+order by 1
+/
+
+-- Objects owned by users
+break on user skip 1 on user
+col user format a15
+ttitle 'All users objects'
+select owner "User", object_name "Object name", object_type "Type" 
+  from all_objects
+where owner in (select username from dba_users
+                    where username not in ('SYS','SYSTEM',
+'OUTLN','DBSNMP','SCOTT','DB_CONTROL','OPS$ORACLE8','XXX'))
+/
+
+
+Find users who have unlimited quota on a tablespace-
+====================================================
+
+select username,tablespace_name,max_bytes from dba_ts_quotas;
+
+
+Revoking a tablespace quota from user--
+=======================================
+
+ALTER USER DB_USER QUOTA 0 ON TABLESPACE_NAME;
+
+SQL> REVOKE   UNLIMITED TABLESPACE  FROM GOLD;
+
+SQL> ALTER USER GOLD QUOTA UNLIMITED ON USERS;
+
+View :  DBA_TS_QUOTAS
+
+
+Find DDL for table,index & others also--
+========================================
+
+set long 99999
+
+SELECT dbms_metadata.get_ddl('USER','ORADMS')  FROM dual;
+
+
+
+============================================
+
+
+SELECT DBMS_METADATA.GET_GRANTED_DDL('ROLE_GRANT','M00083') FROM DUAL; 
+ 
+SELECT DBMS_METADATA.GET_GRANTED_DDL('SYSTEM_GRANT','M00083') FROM DUAL; 
+ 
+SELECT DBMS_METADATA.GET_GRANTED_DDL('OBJECT_GRANT','M00083') FROM DUAL; 
+ 
+select GRANTEE,GRANTED_ROLE,DEFAULT_ROLE from dba_role_privs where GRANTEE='M00083'; 
+ 
+ 
+set lines 250 
+ 
+select GRANTEE,GRANTED_ROLE as grant_to_user,'ROLE_PRIV' as "PRIV_TYPE",ADMIN_OPTION,null as on_object from DBA_ROLE_PRIVS where GRANTEE IN ('&a') 
+union all 
+select GRANTEE,PRIVILEGE,'OBJECT_PRIV',GRANTABLE,TABLE_NAME from dba_tab_privs where grantee IN ('&a') 
+union all 
+select GRANTEE,PRIVILEGE,'SYSTEM_PRIV',ADMIN_OPTION,null from dba_sys_privs where grantee IN ('&a') order by 1,2,3; 
+ 
+ 
+Privis under role -> select * from role_sys_privs where ROLE ='EXT_M69653_SEL'; 
+ set 
+SELECT dbms_metadata.get_ddl('ROLE','EXT_M69653_SEL') FROM dual; 
+ 
+ 
+SQL> select * from ROLE_ROLE_PRIVS where ROLE = 'APPLICATION_DBA'; 
+ 
+ROLE                           GRANTED_ROLE                   ADM 
+------------------------------ ------------------------------ --- 
+APPLICATION_DBA                CONNECT                        NO 
+APPLICATION_DBA                APPLICATION_USER               YES 
+APPLICATION_DBA                EXP_FULL_DATABASE              NO 
+APPLICATION_DBA                IMP_FULL_DATABASE              NO 
+APPLICATION_DBA                APPLICATION_CREATOR            YES 
+APPLICATION_DBA                APPLICATION_OEM_TUNE           NO 
+APPLICATION_DBA                APPLICATION_DEVELOPER          YES 
+ 
+SQL> select * from ROLE_TAB_PRIVS  where ROLE = 'APPLICATION_DBA'; 
+ 
+ROLE                           OWNER                          TABLE_NAME                     COLUMN_NAME                    PRIVILEGE                                GRA 
+------------------------------ ------------------------------ ------------------------------ ------------------------------ ---------------------------------------- --- 
+APPLICATION_DBA                SYS                            ATT_APPSDBA                                                   EXECUTE                                  NO 
+APPLICATION_DBA                M11515                         USER_LAST_ACCESS                                              SELECT                                   NO 
+APPLICATION_DBA                ATT_SHAREDO                    ATT_APPSDBA_LOG                                               SELECT                                   NO 
+ 
+SQL> select * from ROLE_SYS_PRIVS  where ROLE = 'APPLICATION_DBA'; 
+ 
+ROLE                           PRIVILEGE                                ADM 
+------------------------------ ---------------------------------------- --- 
+APPLICATION_DBA                ALTER USER                               NO 
+APPLICATION_DBA                CREATE USER                              NO 
+APPLICATION_DBA                CREATE VIEW                              YES 
+APPLICATION_DBA                ALTER SESSION                            YES 
+APPLICATION_DBA                CREATE PROCEDURE                         YES 
+APPLICATION_DBA                SELECT ANY DICTIONARY                    NO  
+    Sunil(12:50:20 PM):  Access to the following packages should be restricted to authorized accounts only. UTL_FILE: allows Oracle accounts to read and write files 
+on the host operating system. UTL_SMTP: allows messages to be sent from an arbitrary user. UTL_TCP: allows arbitrary data to be sent from the 
+database server. UTL_HTTP: allows the database server to send and receive data via HTTP. DBMS_RANDOM: allows encrypting of data without 
+requiring safe management of encryption keys. DBMS_LOB: allows users access to files stored outside the database. DBMS_SQL: allows users to 
+write dynamic SQL procedures. DBMS_SYS_SQL: allows users to execute SQL with DBA privileges. DBMS_JOB: allows users to submit jobs to the 
+database job queue. DBMS_BACKUP_RESTORE: allows users to backup and restore database data. DBMS_OBFUSCATION_TOOLKIT: allows users access to 
+encryption and decryption functions. 
+ 
+From SQL*Plus: 
+ 
+select table_name from dba_tab_privs 
+where grantee='PUBLIC' 
+and privilege ='EXECUTE' 
+and table_name in 
+('UTL_FILE', 'UTL_SMTP', 'UTL_TCP', 'UTL_HTTP', 
+'DBMS_RANDOM', 'DBMS_LOB', 'DBMS_SQL', 
+'DBMS_SYS_SQL', 'DBMS_JOB', 
+'DBMS_BACKUP_RESTORE', 
+'DBMS_OBFUSCATION_TOOLKIT'); 
+ 
+If any records are returned, this is a Finding. 
+ 
+Revoking all default installation privilege assignments from PUBLIC is not required at this time. However, execute permissions to the 
+specified packages is required to be revoked from PUBLIC. Removal of these privileges from PUBLIC may result in invalid packages in version 
+10.1 and later of Oracle and an inability to execute default Oracle applications and utilities. To correct this problem, grant execute 
+privileges on these packages directly to the SYSMAN, WKSYS, MDSYS and SYSTEM accounts as well as any other default Oracle database and custom 
+application object owner accounts as necessary to support execution of applications/utilities installed with an Oracle Database Server. 
+ 
+At a minimum, revoke the following: 
+ 
+From SQL*Plus: 
+revoke execute on UTL_FILE from PUBLIC; 
+revoke execute on UTL_SMTP from PUBLIC; 
+revoke execute on UTL_TCP from PUBLIC; 
+revoke execute on UTL_HTTP from PUBLIC; 
+revoke execute on DBMS_RANDOM from PUBLIC; 
+revoke execute on DBMS_LOB from PUBLIC; 
+revoke execute on DBMS_SQL from PUBLIC; 
+revoke execute on DBMS_SYS_SQL from PUBLIC; 
+revoke execute on DBMS_JOB from PUBLIC; 
+revoke execute on DBMS_BACKUP_RESTORE from PUBLIC; 
+revoke execute on DBMS_OBFUSCATION_TOOLKIT from PUBLIC; 
+ 
+================================================================================================================ 
+ 
+ 
+select grantee, privilege from dba_tab_privs 
+where 
+   table_name = 'UTL_FILE' 
+and 
+   privilege = 'EXECUTE'; 
+ 
+ 
+ 
+select GRANTEE,PRIVILEGE,'OBJECT_PRIV',GRANTABLE,TABLE_NAME from dba_tab_privs where table_name = 'UTL_FILE'; 
+ 
+ 
+grant execute on utl_file to LSDRRT;
+
+
+Select name, password_date "Password Changed date" 
+from sys.user$ A ,sys.user_history$ B 
+where A.user# = B.user# 
+and 
+A.name='SAPPP2DB' order by password_date;
+
+select PTIME "Password was last changed on" from sys.user$ where NAME='SAPPP2DB';
+
+
+=====================================================
+
+select username, account_status,profile from dba_users where username='CARKLOCALRECONCILE_FUNCTIONAL'; 
+ 
+SELECT 'ALTER USER '|| name ||' IDENTIFIED BY VALUES '''|| spare4 ||';'|| password ||''';' FROM sys.user$ WHERE name='CARKLOCALRECONCILE_FUNCTIONAL'; 
+ 
+create profile junk limit 
+FAILED_LOGIN_ATTEMPTS UNLIMITED 
+PASSWORD_LIFE_TIME UNLIMITED 
+PASSWORD_GRACE_TIME UNLIMITED 
+PASSWORD_REUSE_TIME UNLIMITED 
+PASSWORD_REUSE_MAX UNLIMITED 
+PASSWORD_LOCK_TIME unlimited 
+PASSWORD_VERIFY_FUNCTION null; 
+ 
+ 
+ 
+alter user CARKLOCALRECONCILE_FUNCTIONAL profile junk; 
+ 
+ 
+ 
+ 
+ 
+alter user GGSUSER profile ATTYEAR; 
+ 
+ 
+ 
+ 
+select username, account_status,profile from dba_users where username='GGSUSER'; 
+ 
+ 
+ 
+ 
+ 
+ Select name,password_date "Password Changed date" from sys.user$ A ,sys.user_history$ B 
+where A.user# = B.user# 
+and A.name='GGSUSER' 
+order by password_date; 
+ 
+ 
+ 
+select PTIME " Password was last changed on" from sys.user$ where NAME='GGSUSER'; 
+ 
+ 
+set lines 120 set pages 60 
+col name form a30 
+col Last_Changed form a12 
+ 
+   SELECT name,ptime "Last_Changed" 
+   FROM sys.user$ a, dba_users b 
+   where a.name=b.username 
+and A.name='GGSUSER' 
+order by 2;
