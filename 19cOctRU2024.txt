@@ -1,0 +1,142 @@
+======================================================================================
+= Patch 36866623: COMBO OF OJVM COMPONENT 19.25.0.0.241015 + DB RU 19.25.0.0.241015  =
+======================================================================================
+
+36866623- Combo Patch
+36912597--> DB RU patch
+36878697--> ojvm patch
+36866578--> JDK
+==============================
+= List of Latest Oct Patches =
+==============================
+	Patch 36912597 - Database Release Update 19.25.0.0.241015 
+
+	Patch 36878697 - Oracle JavaVM Component Release Update 19.25.0.0.241015
+
+	OPatch 12.2.0.1.44 for DB 19.0.0.0.0 (Oct 2024)
+
+
+###### Set Opatch environment ###############
+export PATH=$PATH:$ORACLE_HOME/OPatch:$ORACLE_HOME/bin
+env | egrep "ORA|TNS" | wc -l
+
+
+==================
+= Upgarde OPatch =
+==================
+cd $ORACLE_HOME
+cp <PATCH_TOP_DIR>/p6880880_190000_LINUX .
+mv OPatch OPatch_OLD
+unzip p6880880_190000_LINUX
+cd OPatch
+./opatch version
+
+##Remove
+rm p6880880_190000_LINUX
+
+
+=================================================
+= Take Previledge Output for below Library file =
+=================================================
+ls -ltr $ORACLE_HOME/bin/extjob
+ls -ltr $ORACLE_HOME/bin/extjob
+
+
+=================
+= OPatch Backup =
+=================
+opatch lsinventory > lsinv_bkcp     <----- Backup lsinventory
+
+
+=================
+= Binary Backup =
+=================
+[oracle@ukslxdora0013 product]$ cd /oracle/app/oracle/product
+[oracle@ukslxdora0013 product]$ pwd
+/oracle/app/oracle/product
+[oracle@ukslxdora0013 product]$ 
+
+nohup tar -pczvf /oracle/exports/July_2024/DB_home_bkp_31Aug2024.tar 19.3.0 | gzip > /oracle/exports/July_2024/DB_home_bkp_31Aug2024.tar.gz &
+
+
+
+================
+= Unzip Patch =
+================
+cd <PATCH_TOP_DIR>/
+unzip p36912597_<version>_<platform>.zip
+
+
+======================
+= Check RU Conflicts =
+======================
+cd <PATCH_TOP_DIR>/36912597
+opatch prereq CheckConflictAgainstOHWithDetail -ph ./        <<<------Check CPU Conflict
+
+
+=======================
+= Check OJVM Conflict =
+=======================
+ cd <PATCH_TOP_DIR>/36878697
+ opatch prereq CheckConflictAgainstOHWithDetail -ph ./     <<<------ Check OJVM Conflict
+
+select * from v$restore_point;
+create restore point BEFORE_OCT_PATCH guarantee flashback database;
+select * from v$restore_point;
+==================
+= Apply RU Patch =
+==================
+cd <PATCH_TOP_DIR> 36912597
+nohup opatch apply -silent &
+
+
+====================
+= Apply OJVM Patch =
+====================
+cd <PATCH_TOP_DIR>/36878697
+opatch apply -silent
+
+
+========================
+= Run Post Patch Steps =	
+========================
+sqlplus /nolog
+SQL> Connect / as sysdba
+SQL> startup
+SQL> quit
+cd $ORACLE_HOME/OPatch
+./datapatch -sanity_checks 
+./datapatch -verbose
+
+
+sqlplus>@?/rdbms/admin/utlrp.sql
+
+
+= Validate Database Patch =
+opatch lsinv|grep  applied
+
+
+
+Database release update patch installation involves relinking of libraries and executables to be updated. This can sometimes result in permissions changing and needing to be updated. Execute the following as root user:
+
+# chown root $ORACLE_HOME/bin/extjob
+# chmod 4750 $ORACLE_HOME/bin/extjob
+
+====================================
+= Remove Inactive Patches Binaries =
+====================================
+Command to list inactive patches
+	<ORACLE_HOME>/OPatch/opatch util listorderedinactivepatches
+	
+Command to delete inactive patches
+To list help for this feature
+	<ORACLE_HOME>/OPatch/opatch util deleteinactivepatches -help
+
+To delete all inactive patches and retain only one latest inactive patch 
+	<ORACLE_HOME>/OPatch/opatch util deleteinactivepatches -silent
+	
+OR
+
+To delete all inactive patches and retain two latest inactive patches in ORACLE_HOME
+	Update RETAIN_INACTIVE_PATCHES=2 in <ORACLE_HOME>/OPatch/config/opatch.properties
+	opatch util deleteinactivepatches
