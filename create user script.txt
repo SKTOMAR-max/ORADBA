@@ -1,0 +1,35 @@
+================User creation script===========================
+DECLARE
+schema_name VARCHAR2(255) := '&username1'; -- Enter your username instead of 'username1'
+schema_pwd VARCHAR2(255) := '&password';   -- Enter your password instead of 'password'
+table_name VARCHAR2(255);
+BEGIN
+EXECUTE IMMEDIATE 'CREATE USER ' || schema_name || ' IDENTIFIED BY ' || schema_pwd;
+EXECUTE IMMEDIATE 'GRANT CONNECT TO ' || schema_name;
+EXECUTE IMMEDIATE 'GRANT SELECT ANY TABLE TO ' || schema_name;
+EXECUTE IMMEDIATE 'GRANT SELECT ANY DICTIONARY TO ' || schema_name;
+EXECUTE IMMEDIATE 'GRANT EXECUTE ANY TYPE TO ' || schema_name;
+---PASX---
+FOR table_record IN (SELECT table_name FROM all_tables WHERE owner = 'PASX') LOOP
+EXECUTE IMMEDIATE 'GRANT SELECT ON PASX.' || table_record.table_name || ' TO ' || schema_name;
+END LOOP;
+FOR table_record IN (SELECT view_Name FROM All_views WHERE owner = 'PASX') LOOP
+EXECUTE IMMEDIATE 'GRANT SELECT ON PASX.' || table_record.view_Name || ' TO ' || schema_name;
+END LOOP;
+---WLTUSER---
+FOR table_record IN (SELECT table_name FROM all_tables WHERE owner = 'WLTUSER') LOOP
+EXECUTE IMMEDIATE 'GRANT SELECT ON WLTUSER.' || table_record.table_name || ' TO ' || schema_name;
+END LOOP;
+FOR table_record IN (SELECT view_Name FROM All_views WHERE owner = 'WLTUSER') LOOP
+EXECUTE IMMEDIATE 'GRANT SELECT ON WLTUSER.' || table_record.view_Name || ' TO ' || schema_name;
+END LOOP;
+---EDI---
+FOR table_record IN (SELECT table_name FROM all_tables WHERE owner = 'EDI') LOOP
+EXECUTE IMMEDIATE 'GRANT SELECT ON EDI.' || table_record.table_name || ' TO ' || schema_name;
+END LOOP;
+FOR table_record IN (SELECT view_Name FROM All_views WHERE owner = 'EDI') LOOP
+EXECUTE IMMEDIATE 'GRANT SELECT ON EDI.' || table_record.view_Name || ' TO ' || schema_name;
+END LOOP;
+/
+
+select username,created from dba_users order by created;
