@@ -1,0 +1,1819 @@
+set lines 300
+col host_name for a20
+SELECT NAME,DB_UNIQUE_NAME,instance_name, host_name, logins, DATABASE_ROLE, OPEN_MODE, startup_time  FROM V$DATABASE, v$instance;
+
+select distinct name,open_mode,log_mode,logins,host_name,startup_time,database_role from gv$database,gv$instance;
+
+OR
+
+
+prompt
+set serveroutput on size 1000000
+set linesize 512
+set trimspool on
+begin
+     for x in ( select host_name,db.name as name,db.DB_UNIQUE_NAME as DB_UNIQUE_NAME,instance_name,version,to_char(startup_time,'DD-MON-YYYY HH24:MI:SS') as started,
+     logins, db.database_role as db_role,db.open_mode as open_mode,SWITCHOVER_STATUS, INSTANCE_NUMBER,INSTANCE_ROLE, LOG_MODE, FLASHBACK_ON,
+     FORCE_LOGGING,floor(sysdate - startup_time) || trunc( 24*((sysdate-startup_time) - trunc(sysdate-startup_time)))
+     || ' hour(s) ' || mod(trunc(1440*((sysdate-startup_time) - trunc(sysdate-startup_time))), 60) ||' minute(s) '
+     || mod(trunc(86400*((sysdate-startup_time) - trunc(sysdate-startup_time))), 60) ||' seconds' uptime
+                from
+                gv$instance , gv$database db
+                where
+                gv$instance.inst_id=db.inst_id )
+     loop
+             dbms_output.put_line( CHR(13) || CHR(10));
+             dbms_output.put_line( 'HOSTNAME             : '||x.host_name);
+             dbms_output.put_line( 'DATABASE NAME        : '||x.name);
+             dbms_output.put_line( 'DATABASE UNIQUE NAME : '||x.db_unique_name);
+             dbms_output.put_line( 'DATABASE VERSION     : '||x.version);
+             dbms_output.put_line( 'DATABASE ROLE        : '||x.db_role);
+             dbms_output.put_line( 'OPEN MODE            : '||x.open_mode);
+             dbms_output.put_line( 'INSTANCE #           : '||x.instance_number);
+             dbms_output.put_line( 'INSTANCE NAME        : '||x.instance_name);
+             dbms_output.put_line( 'INSTANCE ROLE        : '||x.instance_role);
+             dbms_output.put_line( 'LOGINS               : '||x.logins);
+             dbms_output.put_line( 'SWITCH-OVER          : '||x.switchover_status);
+             dbms_output.put_line( 'LOG MODE             : '||x.log_mode);
+			 dbms_output.put_line( 'FLASHBACK STATUS     : '||x.flashback_on);
+             dbms_output.put_line( 'FORCE LOGGING        : '||x.force_logging);
+             dbms_output.put_line( 'STARTED AT           : '||x.started);
+             dbms_output.put_line( 'UPTIME               : '||x.uptime);
+             dbms_output.put_line( CHR(13) || CHR(10));
+     end loop;
+end;
+/
+
+
+=======================================================================
+
+SQL> STARTUP NOMOUNT
+
+SQL> ALTER DATABASE MOUNT STANDBY DATABASE;
+
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION;
+
+&&
+Alter database recover managed standby database using current logfile disconnect from session;
+
+alter database recover managed standby database nodelay disconnect from session;
+
+alter database recover managed standby database nodelay parallel 6 disconnect from session ;
+
+ select recovery_mode from v$archive_dest_status where recovery_mode !='IDLE';
+
+=======================================
+= Find MRP process is running or not  =
+=======================================
+ Run on Primary DB
+ 
+-------------------------------------------------
+ 
+select vdb.name,vdb.database_role, max(sequence#) "Last Primary Seq Generated"
+from v$archived_log val, v$database vdb
+where val.resetlogs_change# = vdb.resetlogs_change#
+group by vdb.name,vdb.database_role;
+
+alter system switch logfile;
+
+Run on Standby & HA DB  
+ -------------------------------------------------
+SELECT TO_CHAR(STANDBY_BECAME_PRIMARY_SCN) FROM V$DATABASE;
+ 
+
+SELECT al.thrd "Thread", almax "Last Seq Received", lhmax "Last Seq Applied", (almax -lhmax ) diff FROM (select thread# thrd, MAX(sequence#) almax FROM v$archived_log 
+WHERE resetlogs_change#=(SELECT resetlogs_change# FROM v$database) GROUP BY thread#) al, (SELECT thread# thrd, MAX(sequence#) lhmax FROM v$log_history 
+WHERE resetlogs_change#=(SELECT resetlogs_change# FROM v$database) GROUP BY thread#) lh WHERE al.thrd = lh.thrd;
+
+
+OR
+
+ 
+ SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", 
+ (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference" FROM (SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE 
+ (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH,
+(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) 
+FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL
+WHERE ARCH.THREAD# = APPL.THREAD#
+ORDER BY 1; 
+
+
+OR
+
+SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference"
+FROM
+(SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH,
+(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL
+WHERE ARCH.THREAD# = APPL.THREAD# ORDER BY 1;
+
+=> At OS level
+
+!ps -ef | grep mrp
+
+=> At DB level
+
+select process,client_process,status,thread#,sequence#,block#,blocks from v$managed_standby;
+
+select PROCESS, SEQUENCE#, THREAD#, BLOCK#, BLOCKS, status,TO_CHAR(SYSDATE,'DD-MON-YYYY HH:MI:SS') TIME from V$MANAGED_STANDBY;
+
+SELECT PROCESS, STATUS, THREAD#, SEQUENCE# FROM V$MANAGED_STANDBY WHERE PROCESS LIKE '%MRP%'; 
+SELECT PROCESS, STATUS, THREAD#, SEQUENCE# FROM V$MANAGED_STANDBY WHERE PROCESS LIKE '%RFS%'; 
+SELECT THREAD#, PROCESS, STATUS, SEQUENCE#, BLOCK#, BLOCKS FROM V$MANAGED_STANDBY WHERE PROCESS='RFS';
+
+col NAME format a10
+ select NAME,TIME,UNIT,COUNT,LAST_TIME_UPDATED from V$STANDBY_EVENT_HISTOGRAM where
+ name like '%lag' and count >0 order by LAST_TIME_UPDATED;
+
+select trunc(completion_time) as "DATE", count(*) as "LOG SWITCHES", 
+ round(sum(blocks*block_size)/1024/1024) as "REDO PER DAY (MB)"
+from v$archived_log 
+where dest_id=1 
+group by trunc(completion_time) order by 1;
+
+
+select name,value,time_computed,datum_time from v$dataguard_stats;
+select name, value from v$dataguard_stats;
+
+===Active Session History=====
+select * from (
+select a.event_id, e.name, sum(a.time_waited) total_time_waited
+from v$active_session_history a, v$event_name e
+where a.event_id = e.event_id and a.SAMPLE_TIME>=(sysdate-30/(24*60)) 
+group by a.event_id, e.name order by 3 desc)
+where rownum < 11;
+
+====Primary====
+select dest_id,status,error from v$archive_dest where dest_id=2;
+select dest_id,error,status,log_sequence,applied_scn from v$archive_dest where dest_id=2;
+
+SELECT gvi.thread#, timestamp, message FROM gv$dataguard_status gvds, gv$instance gvi WHERE gvds.inst_id = gvi.inst_id AND severity in ('Error','Fatal') ORDER BY timestamp, thread#;
+ 
+ 
+col NAME format a10
+ select NAME,TIME,UNIT,COUNT,LAST_TIME_UPDATED from V$STANDBY_EVENT_HISTOGRAM where
+ name like '%lag' and count >0 order by LAST_TIME_UPDATED;
+
+
+Primary-
+select trunc(completion_time) as "DATE", count(*) as "LOG SWITCHES", 
+ round(sum(blocks*block_size)/1024/1024) as "REDO PER DAY (MB)"
+from v$archived_log 
+where dest_id=1 
+group by trunc(completion_time) order by 1;
+
+SQL> select EVENT, TOTAL_WAITS, TOTAL_TIMEOUTS, TIME_WAITED, AVERAGE_WAIT
+   from v$system_event
+   where event like '%LNS%'
+   or event like '%LGWR%' order by 4 desc;
+   
+Standby-
+select EVENT, TOTAL_WAITS, TOTAL_TIMEOUTS, TIME_WAITED, AVERAGE_WAIT
+   from v$system_event
+   where event like '%RFS%' order by 4 desc;
+
+
+==================================
+= Find the GAP on the Standby DB =
+==================================
+
+set lines 250 pages 250 
+col HOST_NAME for a15 
+col DB_Start_Time for a20 
+SELECT a.inst_id,b.NAME as DB_NAME,a.instance_name,b.OPEN_MODE,b.LOG_MODE,b.flashback_on ,a.HOST_NAME, 
+b.database_role,to_char(a.startup_time,'DD-MON-YYYY HH24:MI')DB_Start_Time FROM gV$INSTANCE a ,gv$database b where a.inst_id=b.inst_id; 
+ 
+  
+select inst_id, process, thread#, sequence#, status from gv$managed_standby where process like '%MRP%'; 
+ 
+SELECT al.thrd "Thread", almax "Last Seq Received", lhmax "Last Seq Applied", (almax -lhmax ) diff FROM (select thread# thrd, MAX(sequence#) almax FROM v$archived_log 
+WHERE resetlogs_change#=(SELECT resetlogs_change# FROM v$database) GROUP BY thread#) al, (SELECT thread# thrd, MAX(sequence#) lhmax FROM v$log_history 
+WHERE resetlogs_change#=(SELECT resetlogs_change# FROM v$database) GROUP BY thread#) lh WHERE al.thrd = lh.thrd;
+
+select al.thrd "Thread", almax "Last Seq Received", lhmax "Last Seq Applied" , (almax-lhmax) Difference 
+from (select thread# thrd, max(sequence#) almax 
+from v$archived_log 
+where resetlogs_change#=(select resetlogs_change# from v$database) 
+group by thread#) al, 
+(select thread# thrd, max(sequence#) lhmax 
+from v$log_history 
+where first_time=(select max(first_time) from v$log_history) 
+group by thread#) lh 
+where al.thrd = lh.thrd
+order by 1;
+
+
+&&&&
+From Primary-
+
+#set feedback off 
+set serveroutput on size 1000000 
+set linesize 512 
+set trimspool on 
+begin 
+     for x in ( select primary_current,Standby_applied, (a.primary_current - b.Standby_applied) archive_gap, DB_UNIQUE_NAME, name from 
+                                (select max(SEQUENCE#) as primary_current from v$archived_log where dest_id=1) a, 
+                                (select max(SEQUENCE#) as Standby_applied from v$archived_log where dest_id=2 and applied='YES') b, 
+                                (select DB_UNIQUE_NAME from v$archive_dest where dest_id=2) c, 
+                                (select name from v$database) d ) 
+     loop 
+             dbms_output.put_line( CHR(13) || CHR(10)); 
+                       dbms_output.put_line( 'Current archivelog on primary '|| x.name ||' : '||x.primary_current); 
+             dbms_output.put_line( 'Applied archivelog on standby '|| upper(x.db_unique_name) ||' : '||x.Standby_applied); 
+             dbms_output.put_line( 'Total archive gap                      : '||x.archive_gap); 
+                       dbms_output.put_line( CHR(13) || CHR(10)); 
+     end loop; 
+end; 
+/
+
+
+
+select process,status,thread#,sequence# from gv$managed_standby;
+
+set lines 200
+col source_db_unique_name format a20
+col value format a20
+
+select source_db_unique_name,name,value,unit,time_computed,datum_time from v$dataguard_stats where name like '%lag';
+
+select al.thrd "Thread", almax "Last Seq Received", lhmax "Last Seq Applied" FROM (select thread# thrd, MAX(sequence#) almax FROM v$archived_log where resetlogs_change#=(select resetlogs_change# from v$database) GROUP BY thread#) al, (select thread# thrd, MAX(sequence#) lhmax from v$log_history where resetlogs_change#=(select resetlogs_change# from v$database) group by thread#) lh where al.thrd = lh.thrd;
+
+ 
+================
+= For RAC DB's =
+================
+
+set pages 200 lines 300 
+col DEST_NAME for a20 
+col RECOVERY_MODE for a25 
+col ERROR for a10 
+col DB_UNIQUE_NAME for a15 
+col GAP_STATUS for a12 
+col DEST_ID for 99999999 
+select distinct DEST_ID,DEST_NAME,DB_UNIQUE_NAME,a.STATUS,DATABASE_MODE,RECOVERY_MODE,ERROR,SYNCHRONIZED,GAP_STATUS 
+from gv$archive_dest_status a ,gv$instance i 
+where  DB_UNIQUE_NAME <> 'NONE' order by 1;
+
+
+From primary:- 
+ select thread#,max(sequence#) from v$archived_log group by thread#; 
+
+set linesize 300 
+col ID for 99 
+col DB_status for a10 
+col Archive_dest for a20 
+set pagesize 100 
+ 
+SELECT DEST_ID "ID", STATUS "DB_status", DESTINATION "Archive_dest", ERROR "Error" FROM V$ARCHIVE_DEST;
+
+ 
+From standby:- 
+ select thread#,max(sequence#) from v$archived_log where applied='YES' group by thread#;
+ 
+ select al.thrd "Thread", almax "Last Seq Received", lhmax "Last Seq Applied",  (almax-lhmax) Difference
+from (select thread# thrd, max(sequence#) almax 
+      from gv$archived_log 
+      where resetlogs_change#=(select resetlogs_change# from v$database) 
+      group by thread#) al, 
+     (select thread# thrd, max(sequence#) lhmax 
+      from gv$log_history 
+      where resetlogs_change#=(select resetlogs_change# from v$database) 
+      group by thread#) lh 
+where al.thrd = lh.thrd 
+order by 1;
+ 
+ 
+
+SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", (ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference" 
+FROM 
+(SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH, 
+(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL 
+WHERE 
+ARCH.THREAD# = APPL.THREAD# 
+ORDER BY 1;
+
+==============================================
+= use this script to delete applied archives =
+==============================================
+
+
+select 'delete noprompt archivelog sequence between '||min(sequence#)||' and '||max(sequence#)||' thread '||thread#||';' 
+from v$archived_log 
+where 
+applied='YES' and deleted='NO' 
+group by thread#, applied, deleted;
+
+=======================================================================================================================================================================
+
+
+
+-----------------------------------------------------------------------------------------------
+
+log_archive_dest_2                   string      service="ps29ebpp", LGWR ASYNC
+                                                  NOAFFIRM delay=240 optional c
+                                                 ompression=disable max_failure
+                                                 =0 max_connections=4 reopen=30
+                                                 0 db_unique_name="PS29EBPP" ne
+                                                 t_timeout=600, valid_for=(all_
+                                                 logfiles,primary_role)
+
+
+log_archive_dest_3                   string      service="ps89ebpp", LGWR ASYNC
+                                                  NOAFFIRM delay=0 optional com
+                                                 pression=disable max_failure=0
+                                                  max_connections=4 reopen=300
+                                                 db_unique_name="PS89EBPP" net_
+                                                 timeout=600, valid_for=(all_lo
+                                                 gfiles,primary_role)
+
+
+
+
+==================================
+= File Missing on the Standby DB =
+==================================
+
+Errors in file /oracle/app/oracle/admin/CC/bdump/cc_mrp0_22294.trc:
+ORA-01111: name for data file 536 is unknown - rename to correct file
+ORA-01110: data file 536: '/oracle/app/oracle/product/10.2.0/db_1/dbs/UNNAMED00536'
+ORA-01157: cannot identify/lock data file 536 - see DBWR trace file
+ORA-01111: name for data file 536 is unknown - rename to correct file
+ORA-01110: data file 536: '/oracle/app/oracle/product/10.2.0/db_1/dbs/UNNAMED00536'
+
+Prod-
+=====
+select file#,name from v$datafile where file#=536;
+
+
+Standby-
+=======
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+SHUTDOWN IMMEDIATE;
+STARTUP MOUNT;
+ALTER SYSTEM SET standby_file_management='MANUAL' SCOPE=BOTH;
+SHO PARAMETER STANDBY
+select * from v$recover_file where error like '%FILE%';
+ALTER DATABASE CREATE DATAFILE '$ORACLE_HOME/dbs/UNNAMED00195' as 'correct_path/datafile.dbf';
+ALTER DATABASE CREATE DATAFILE '$ORACLE_HOME/dbs/UNNAMED00009' as '/u02/app/omr/oradata/HNOEMPRD/mgmt02.dbf';
+ALTER SYSTEM SET standby_file_management='AUTO' SCOPE=BOTH;
+SHO PARAMETER STANDBY
+ALTER DATABASE OPEN;     (Optional If db was running in read-only mode)
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT FROM SESSION;
+
+
+If still issue persist. Strat db in mount mode and set standby_file_management to manual. then create datafile and start recovery on the standby db.
+
+
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+SHUTDOWN IMMEDIATE;
+STARTUP MOUNT;
+ALTER SYSTEM SET standby_file_management='MANUAL' SCOPE=BOTH;
+SHO PARAMETER STANDBY
+select * from v$recover_file where error like '%FILE%';
+ALTER DATABASE CREATE DATAFILE '$ORACLE_HOME/dbs/UNNAMED00195' as 'correct_path/datafile.dbf';
+recover standby database;
+
+once recovery process completed the switch standby_file_management to AUTO and start db in normal mode or mount mode and start MRP 
+process..
+
+
+
+
+
+============================================
+Restore Archivelog on a different location:-
+============================================
+
+run { 
+ALLOCATE CHANNEL ch1 DEVICE TYPE DISK FORMAT = 'D:\dbawork\na38551\MKS01P_ARCH\'; 
+RESTORE ARCHIVELOG FROM SEQUENCE 128458 UNTIL SEQUENCE 128510; 
+RELEASE CHANNEL ch1; 
+}
+
+&&
+
+run { 
+        allocate channel 't1' type 'SBT_TAPE'  maxopenfiles=2  PARMS='SBT_LIBRARY=/usr/openv/netbackup/bin/libobk.so64.1,ENV=(NB_ORA_SERV=bsprd267,NB_ORA_CLI 
+	 ENT=p2iex2d1-ebr.bhdc.att.com,NB_ORA_POLICY=BSPRD267_p2iex2d1_ORA_arch,NB_ORA_SCHED=Default-Application-Backup)'; 
+        allocate channel 't2' type 'SBT_TAPE'  maxopenfiles=2  PARMS='SBT_LIBRARY=/usr/openv/netbackup/bin/libobk.so64.1,ENV=(NB_ORA_SERV=bsprd267,NB_ORA_CLI 
+	 ENT=p2iex2d1-ebr.bhdc.att.com,NB_ORA_POLICY=BSPRD267_p2iex2d1_ORA_arch,NB_ORA_SCHED=Default-Application-Backup)'; 
+	 restore archive log from sequence 194570;
+
+
+
+================================================================
+How to resolve MRP struck issues on a Physical Standby Database-
+================================================================
+
+
+Lately a standby server was rebooted without DBA's knowledge. When the standby server was up. I was called to check the standby database whether they are in sync. So I did the usual checks and started the apply process. However I find that the standby database was struck at log 49069. 
+
+SQL> SELECT THREAD#, SEQUENCE#,archived,APPLIED FROM gV$ARCHIVED_LOG ORDER BY SEQUENCE#;
+
+   THREAD#  SEQUENCE# ARC APP
+---------- ---------- --- ---
+         1      49068 YES YES
+         1      49069 YES NO
+         1      49070 YES NO
+         1      49071 YES NO
+         1      49072 YES NO
+         1      49073 YES NO
+         1      49074 YES NO
+         1      49075 YES NO
+
+On further checking the archive log area, I find the log 49069 is missing. The subsequent 49070, 49071, etc.. are there. I did a few log switches and find that the logs are being shipped to standby. Somehow, log 49069 is not being shipped across to standby database.
+
+The alert.log shows: 
+
+Media Recovery Waiting for thread 1 sequence 49069
+Fetching gap sequence in thread 1, gap sequence 49069-49069 
+
+
+It's a good thing I still have log 49069 in primary server. So this is what I did.
+
+====================================================
+1. SCP the missing log file from primary to standby.
+====================================================
+
+At primary server-
+==================
+
+$ scp -p 1_49069_662147521.dbf stdbyserver:/archive/axiompry/log
+Password:
+1_49069_662147521.db 100% |****************************************|   184 MB    00:30
+
+=======================================================================
+2. Register the log file and then use managed recovery to recover them-
+=======================================================================
+
+At Standby server-
+==================
+
+    SQL> alter database recover managed standby database cancel;
+    SQL> alter database register logfile '<full path/archive log file name>';
+
+    or you could use one rman command to catalog all the archive logs that were manually transferred and needed to be added to the controlfile at the standby site.
+
+    rman> catalog start with 'PATH_TO_ARCHIVELOGS/'; 
+    SQL> alter database recover managed standby database disconnect;
+
+================
+Alternatively :
+================
+
+If you have lots of archive log files to register, then you could simply use manual recovery without registering them. 
+Make sure the archive log files are located in the location specified by log_archive_dest_1 or standby_archive_dest. 
+If not, then you would need to use from 'location' attribute in the manual recovery clause.
+SQL> alter database recover managed standby database cancel; 
+SQL> alter database recover automatic standby database; 
+or 
+SQL> alter database recover automatic from '/tmp/archive/' standby database;
+        /tmp/archive/ is the location where your archive log files are located, which is different from the local archive destination or the standby archive destination.
+
+====================================================
+3. Check whether the archive logs are being applied-
+====================================================
+
+SQL> SELECT THREAD#, SEQUENCE#,archived,APPLIED FROM gV$ARCHIVED_LOG ORDER BY SEQUENCE#;
+
+   THREAD#  SEQUENCE# ARC APP
+---------- ---------- --- ---
+         1      49068 YES YES
+         1      49069 YES YES
+         1      49070 YES YES
+         1      49071 YES YES
+         1      49072 YES YES
+         1      49073 YES YES
+         1      49074 YES YES
+         1      49075 YES YES
+
+
+
+
+================================================================================
+
+
+DGMGRL>  show configuration; 
+Configuration - PP13EBPP_DGCFG 
+  Protection Mode: MaxPerformance 
+  Databases: 
+    PP13EBPP - Primary database 
+    PS23EBPP - Physical standby database 
+    PS83EBPP - Physical standby database 
+Fast-Start Failover: DISABLED 
+And then start recovery thru following. 
+DGMGRL> edit database 'PS83EBPP' set state = 'apply-on'; 
+Succeeded.
+
+$ dgmgrl  / 
+[] 
+[]        To shutdown Primary, login into primary server and then run 
+[]        DGMGRL> sql 'alter system checkpoint'; 
+[]        DGMGRL> shutdown immediate; 
+[] 
+[]        To shutdown standby, login into standby server, and then run 
+[]        DGMGRL> edit database a2c1d67 set state='APPLY-OFF'; 
+[]        DGMGRL> shutdown immediate ; 
+[] 
+[]        To startup standby, login into standby server, and then run 
+[]        DGMGRL> startup mount 
+[]        DGMGRL> edit database a2c1d67 set state='APPLY-ON';
+
+
+DGMGRL> show database verbose 'PS44EDF'
+
+Database - PS44EDF
+
+  Role:               PHYSICAL STANDBY
+  Intended State:     APPLY-ON
+  Transport Lag:      0 seconds (computed 0 seconds ago)
+  Apply Lag:          0 seconds (computed 0 seconds ago)
+  Average Apply Rate: 31.60 MByte/s
+  Active Apply Rate:  28.61 MByte/s
+  Maximum Apply Rate: 417.24 MByte/s
+  Real Time Query:    ON
+  Instance(s):
+    ps44edf1
+    ps44edf2 (apply instance)
+    ps44edf3
+    ps44edf4
+    ps44edf5
+    ps44edf6
+    ps44edf7
+    ps44edf8
+
+
+ALTER DATABASE RECOVER automatic standby database
+
+How to Check Whether Physical Standby is in Sync with the Primary or Not and resolved gap ?
+June 25, 2014 
+Step by Step Process to Resolved gap on Standby database.
+
+Summary
+1. Check the name and status of database.
+2. Check for GAP on standby
+3. Check redo received on standby
+4. Check redo applied on standby
+5. Identify missing archive log files
+6. Copy archive log files
+7. Register archive log files with standby
+8. Restart the managed recovery operations
+
+******************************************************************************************************************
+=====================================================
+Step 1 : Check the status of database on both server. 
+=====================================================
+On Primary Server. 
+
+SQL> select name, open_mode, database_role from v$database;
+
+NAME      OPEN_MODE  DATABASE_ROLE
+——— ———- —————-
+MYDB   READ WRITE PRIMARY
+
+SQL> set sqlprompt “PRIMARY’@’_connect_identifier>”
+PRIMARY@MYDB>
+
+On Standby Server. 
+
+SQL> select name, open_mode, database_role from v$database;
+
+NAME      OPEN_MODE  DATABASE_ROLE
+——— ———- —————-
+MYDB   MOUNTED    PHYSICAL STANDBY
+
+SQL> set sqlprompt “SECONDARY’@’_connect_identifier>”
+STANDBY@MYDB>
+
+
+==================================
+Step 2 : Check for GAP on Standby 
+==================================
+
+PRIMARY@MYDB> select max(sequence#) from v$log_history;
+
+MAX(SEQUENCE#)
+————–
+         76921
+
+STANDBY@MYDB> select max(sequence#) from v$log_history;
+
+MAX(SEQUENCE#)
+————–
+         76921
+
+
+STANDBY@MYDB> 
+------------
+SELECT THREAD# "Thread",SEQUENCE# "Last Sequence Generated" FROM V$ARCHIVED_LOG
+          WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#) ORDER BY 1; 
+
+    Thread Last Sequence Generated
+———- ———————–
+         1                   76921
+
+ 
+=======================================================
+Step 3 & 4: Check redo received and applied on standby. 
+=======================================================
+
+STANDBY@MYDB> 
+
+SELECT ARCH.THREAD# "Thread”, ARCH.SEQUENCE# “Last Sequence Received”, APPL.SEQUENCE# “Last Sequence Applied”, (ARCH.SEQUENCE# – APPL.SEQUENCE#) “Difference” FROM (SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH, (SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL WHERE ARCH.THREAD# = APPL.THREAD# ORDER BY 1;
+
+    Thread Last Sequence Received Last Sequence Applied Difference
+———- ———————- ——————— ———-
+         1                  76922                 20931      55991
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+select al.thrd "Thread", almax "Last Seq Received", lhmax "Last Seq Applied"
+from (select thread# thrd, max(sequence#) almax
+      from v$archived_log
+      where resetlogs_change#=(select resetlogs_change# from v$database)
+      group by thread#) al,
+     (select thread# thrd, max(sequence#) lhmax
+      from v$log_history
+      where first_time=(select max(first_time) from v$log_history)
+      group by thread#) lh
+where al.thrd = lh.thrd;
+
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+SELECT PROCESS, CLIENT_PROCESS, SEQUENCE#, STATUS FROM V$MANAGED_STANDBY;
+
+==============================================
+Step 5: Identify the missing archive log file. 
+==============================================
+
+ STANDBY@MYDB>SELECT THREAD#, LOW_SEQUENCE#, HIGH_SEQUENCE# FROM V$ARCHIVE_GAP;
+no rows selected
+
+—-If found gap
+
+===============================================================================
+Step 6: Copy missing archive log file After identifying a gap (as shown above), 
+===============================================================================
+
+the DBA will need to query the primary database to locate the archived redo logs on the primary database. The following query assumes the local archive destination on the primary database is LOG_ARCHIVE_DEST_1:
+
+PRIMARY@MYDB>  
+-------------
+
+SELECT name
+ FROM v$archived_log
+ WHERE thread# = 1
+ AND dest_id = 1
+ AND sequence# BETWEEN 20931 and 76922;
+
+Output: 
+/oracle/bases/MYDB/archives/MYDB_0001_0716381751_0000076922.arc
+56027 rows selected.
+
+==============================================
+Step 7: Register archive logfile with standby.
+==============================================
+
+Copy the above redo log files to the physical standby database and register them using the ALTER DATABASE REGISTER LOGFILE … SQL statement on the physical standby database.
+
+For example:
+
+STANDBY@MYDB> ALTER DATABASE REGISTER LOGFILE ‘/oracle/bases/MYDB/archives/MYDB_0001_0716381751_0000076922.arc’;
+
+Step 8: Restart the managed recovery operations. 
+— After the redo logs have been registered on the physical standby database, the DBA can restart the managed recovery operations.
+  For example, to put the physical standby database into automatic recovery managed mode:
+
+STANDBY@MYDB> alter database recover managed standby database disconnect from session;
+
+
+
+
+
+
+
+
+======================================================================================================================================================================================================================================================================================
+
+Resolving Gaps in Data Guard Apply Using Incremental RMAN Backup
+================================================================
+
+
+Step 1- Check the current SCN on the both(Primary & Standby) server.
+
+PROD> select current_scn from v$database;
+select min(checkpoint_change#) from v$datafile_header;
+
+CURRENT_SCN
+-----------
+1447102
+
+On the standby:
+col current_SCN for 99999999999999999999;
+col min(checkpoint_change#) for 99999999999999999999;
+STANDBY> select current_scn from v$database;
+select min(checkpoint_change#) from v$datafile_header;
+
+CURRENT_SCN
+-----------
+1301571
+
+
+PROD> select scn_to_timestamp(1447102) from dual;
+
+SCN_TO_TIMESTAMP(1447102)
+-------------------------------
+18-DEC-15 08.54.28.000000000 AM
+
+
+STANDBY> select scn_to_timestamp(1301571) from dual;
+
+SCN_TO_TIMESTAMP(1301571)
+-------------------------------
+15-DEC-15 07.19.27.000000000 PM
+
+
+=======
+Step 2-
+=======
+
+2.1 - Stop the managed standby apply process:
+
+STANDBY> alter database recover managed standby database cancel;
+
+Database altered.
+
+2.2- [Standby] Shutdown the standby database
+
+2.3- [Primary] On the primary, take an incremental backup from the SCN number where the standby has been stuck:
+
+RMAN>
+
+ run { 
+ allocate channel c1 type disk format '/u01/oraback/%U.rmb'; 
+ backup incremental from scn 1301571 database;
+ }
+
+
+=======
+Step 3-
+=======
+
+On the primary, create a new standby controlfile:
+
+SQL> alter database create standby controlfile as '/u01/oraback/DEL1_standby.ctl';
+
+Database altered.
+
+=>> [Primary] Copy these files to standby host
+
+
+=======
+Step 4-
+=======
+
+=> [Standby] Bring up the instance in nomount mode:
+
+SQL> startup nomount
+
+
+=> [Standby] Check the location of the controlfile:
+
+SQL> show parameter control_files
+
+NAME TYPE VALUE
+------------------------------------ ----------- ------------------------------
+control_files string /u01/oradata/standby_cntfile.ctl
+
+
+=> [Standby] Replace the controlfile with the one you just created in primary.
+
+=> $ cp /u01/oraback/DEL1_standby.ctl /u01/oradata/standby_cntfile.ctl
+
+
+=> [Standby] Mount the standby database:
+
+SQL> alter database mount standby database;
+
+
+=======
+Step 5-
+=======
+
+rman target=/
+
+Recovery Manager: Release 10.2.0.4.0 - Production on Fri Dec 18 06:44:25 2009
+
+Copyright (c) 1982, 2007, Oracle. All rights reserved.
+
+connected to target database: DEL1 (DBID=846390698, not open)
+RMAN> catalog start with '/u01/oraback';
+
+using target database control file instead of recovery catalog
+searching for all files that match the pattern /u01/oraback
+
+List of Files Unknown to the Database
+=====================================
+File Name: /u01/oraback/DEL1_standby.ctl
+File Name: /u01/oraback/06l16u1q_1_1.rmb
+
+Do you really want to catalog the above files (enter YES or NO)? yes
+cataloging files...
+cataloging done
+
+List of Cataloged Files
+=======================
+File Name: /u01/oraback/DEL1_standby.ctl
+File Name: /u01/oraback/06l16u1q_1_1.rmb
+
+
+========================
+=> Recover these files:-
+========================
+
+
+RMAN> recover database;
+
+Starting recover at 18-DEC-09
+using channel ORA_DISK_1
+channel ORA_DISK_1: starting incremental datafile backupset restore
+channel ORA_DISK_1: specifying datafile(s) to restore from backup set
+destination for restore of datafile 00001: /u01/oradata/DEL2/datafile/o1_mf_system_5lptww3f_.dbf
+...…
+channel ORA_DISK_1: reading from backup piece /u01/oraback/05l16u03_1_1.rmb
+channel ORA_DISK_1: restored backup piece 1
+piece handle=/u01/oraback/05l16u03_1_1.rmb tag=TAG20091218T083619
+channel ORA_DISK_1: restore complete, elapsed time: 00:00:07
+starting media recovery
+
+archive log thread 1 sequence 8012 is already on disk as file /u01/oradata/1_8012_697108460.dbf
+archive log thread 1 sequence 8013 is already on disk as file /u01/oradata/1_8013_697108460.dbf
+… 
+
+After some time, the recovery fails with the message:
+
+archive log filename=/u01/oradata/1_8008_697108460.dbf thread=1 sequence=8009
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-03002: failure of recover command at 12/18/2009 06:53:02
+RMAN-11003: failure during parse/execution of SQL statement: alter database recover logfile '/u01/oradata/1_8008_697108460.dbf'
+ORA-00310: archived log contains sequence 8008; sequence 8009 required
+ORA-00334: archived log: '/u01/oradata/1_8008_697108460.dbf'
+
+This happens because we have come to the last of the archived logs. The expected archived log with sequence# 8008 has not been generated yet.
+
+
+=>At this point exit RMAN and start managed recovery process:
+
+SQL> alter database recover managed standby database disconnect from session;
+
+Database altered.
+
+
+=> Check the SCN’s in primary and standby:
+
+[Standby] SQL> select current_scn from v$database;
+
+CURRENT_SCN
+-----------
+1447474
+[Primary] SQL> select current_scn from v$database;
+
+CURRENT_SCN
+-----------
+1447478
+
+
+
+
+=======OR=========
+Doc ID 2484229.1
+
+
+Goal->
+
+The steps in this section can used to resolve problems if a physical standby database has lost or corrupted archived redo data or has an unresolveable archive gap.
+
+
+Solution-
+
+1) On the standby database, stop the managed recovery process (MRP)
+	SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+
+2) On the standby database, find the SCN which will be used for the incremental backup at the primary database:
+	SQL> SELECT CURRENT_SCN FROM V$DATABASE;
+
+	SQL> select min(checkpoint_change#) from v$datafile_header;
+	CHECKPOINT_CHANGE#
+	---------------------
+	3162298
+
+In ideal situation the above 2 queries will return the almost same SCN. However if there is huge difference its better to take backup using the SCN from second query (lesser SCN), as one of the datafile may be behind.
+
+3) In sqlplus, connect to the primary database and identify datafiles added:
+
+	SQL> SELECT FILE#, NAME FROM V$DATAFILE WHERE CREATION_CHANGE# > <SCN_NUMBER_FROM_STEP 2>;
+
+4) Using rman, create backup of missing datafiles and an incremental backup using the SCN derived in the previous step:
+
+	RMAN> backup datafile #, #, #, # format '/tmp/ForStandby_%U' tag 'FORSTANDBY';
+
+	RMAN> backup incremental from SCN 3162298 database format '/tmp/ForStandby_%U' tag 'FORSTANDBY';
+
+	RMAN> backup current controlfile for standby format '/tmp/ForStandbyCTRL.bck';
+
+5) Transfer all backup sets created on the primary system to the standby system.
+	scp /tmp/ForStandby* standby:/tmp
+
+6) Restore new controlfile and catalog the backup transfered in step #5:
+
+	RMAN> shutdown;
+
+	RMAN> startup nomount;
+
+	RMAN> restore standby controlfile from '/tmp/ForStandbyCTRL.bck';
+
+	RMAN> alter database mount;
+
+	RMAN> CATALOG START WITH '/tmp/ForStandby';
+
+	using target database control file instead of recovery catalog
+	searching for all files that match the pattern /tmp/ForStandby
+
+	List of Files Unknown to the Database
+	=====================================
+	File Name: /tmp/ForStandby_2lkglss4_1_1
+	File Name: /tmp/ForStandby_2mkglst8_1_1
+
+	Do you really want to catalog the above files (enter YES or NO)? YES
+	cataloging files...
+	cataloging done
+
+	List of Cataloged Files
+	=======================
+	File Name: /tmp/ForStandby_2lkglss4_1_1
+	File Name: /tmp/ForStandby_2mkglst8_1_1
+
+
+7) Restore missing datafiles:
+
+	run{
+		set newname for datafile X to '+DISKGROUP';
+		set newname for datafile Y to '+DISKGROUP';
+		set newname for datafile Z to '+DISKGROUP';
+		restore datafile x,y,z,....;}
+
+
+8) Rename the datafiles in new standby controlfile
+
+Since the controlfile is restored from PRIMARY the datafile locations in STANDBY controlfile will be same as PRIMARY database, so catalog datafiles in STANDBY will do the necessary rename operations.
+
+Perform the below step  in STANDBY for each diskgroup where the datafile directory structure between primary and standby are different.
+
+RMAN> CATALOG START WITH '+DATA/mystd/datafile/';
+
+List of Files Unknown to the Database
+=====================================
+File Name: +data/mystd/DATAFILE/SYSTEM.309.685535773
+File Name: +data/mystd/DATAFILE/SYSAUX.301.685535773
+File Name: +data/mystd/DATAFILE/UNDOTBS1.302.685535775
+File Name: +data/mystd/DATAFILE/SYSTEM.297.688213333
+File Name: +data/mystd/DATAFILE/SYSAUX.267.688213333
+File Name: +data/mystd/DATAFILE/UNDOTBS1.268.688213335
+
+Do you really want to catalog the above files (enter YES or NO)? YES
+cataloging files...
+cataloging done
+
+List of Cataloged Files
+=======================
+File Name: +data/mystd/DATAFILE/SYSTEM.297.688213333
+File Name: +data/mystd/DATAFILE/SYSAUX.267.688213333
+File Name: +data/mystd/DATAFILE/UNDOTBS1.268.688213335
+
+ Once all files have been cataloged, switch the database to copy:
+RMAN> SWITCH DATABASE TO COPY;
+
+datafile 1 switched to datafile copy "+DATA/mystd/datafile/system.297.688213333"
+datafile 2 switched to datafile copy "+DATA/mystd/datafile/undotbs1.268.688213335"
+datafile 3 switched to datafile copy "+DATA/mystd/datafile/sysaux.267.688213333"
+
+
+9) Recover the standby database with the cataloged incremental backup:
+RMAN> RECOVER DATABASE NOREDO;
+
+starting recover at 03-JUN-09
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: sid=28 devtype=DISK
+channel ORA_DISK_1: starting incremental datafile backupset restore
+channel ORA_DISK_1: specifying datafile(s) to restore from backup set
+destination for restore of datafile 00001: +DATA/mystd/datafile/system.297.688213333
+destination for restore of datafile 00002: +DATA/mystd/datafile/undotbs1.268.688213335
+destination for restore of datafile 00003: +DATA/mystd/datafile/sysaux.267.688213333
+channel ORA_DISK_1: reading from backup piece /tmp/ForStandby_2lkglss4_1_1
+channel ORA_DISK_1: restored backup piece 1
+piece handle=/tmp/ForStandby_2lkglss4_1_1 tag=FORSTANDBY
+channel ORA_DISK_1: restore complete, elapsed time: 00:00:02
+Finished recover at 03-JUN-09
+
+10) If the standby database needs to be configured for FLASHBACK use the below step to enable.
+SQL> ALTER DATABASE FLASHBACK OFF; 
+SQL> ALTER DATABASE FLASHBACK ON;
+
+11) On standby database, clear all standby redo log groups:
+SQL> ALTER DATABASE CLEAR LOGFILE GROUP 1;
+SQL> ALTER DATABASE CLEAR LOGFILE GROUP 2;
+SQL> ALTER DATABASE CLEAR LOGFILE GROUP 3;
+....
+
+12) On the standby database, start the MRP
+SQL> ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT;
+
+
+=========================================
+ select distinct checkpoint_change# from v$datafile_header;
+ 
+  select checkpoint_change# from v$database;
+
+====== Switchover from standby to primary ==========
+
+startup nomount
+
+alter database mount standby database;
+
+alter system set log_archive_dest_state_2=defer scope=both;
+
+select switchover_status from v$database;
+
+alter database commit to switchover to primary;
+or
+alter database commit to switchover to primary with session shutdown;
+
+shutdown immediate
+
+startup
+
+select switchover_status from v$database;
+
+alter system set log_archive_dest_state_2=enable scope=both;
+
+alter tablespace TEMP add tempfile '/u01/orcl/oradata/temp/temp01.dbf' size 1000M;
+
+alter system set job_queue_Processes=10; *** As per in old primary ***
+
+alter system set aq_tm_processes=5;
+
+alter system switch logfile;
+
+============ Switch over to standby from primary =====
+
+show parameter aq_tm_processes
+
+show parameter job_queue_processes
+
+alter system set aq_tm_processes=0;
+
+alter system set job_queue_processes=0;
+
+alter system switch logfile;
+
+select switchover_status from v$database;
+
+alter database commit to switchover to physical standby with session shutdown;
+
+shutdown immediate;
+
+startup nomount
+
+alter database mount standby database;
+
+select switchover_status from v$database;
+
+recover managed standby database disconnect from session;
+
+
+============= Convert StandBy to standalone primary =======
+
+SQL> select database_role from v$database;
+
+DATABASE_ROLE
+
+------------------------------------------------
+
+PHYSICAL STANDBY
+
+ 
+
+SQL> alter database activate standby database;
+
+
+SQL> SHUTDOWN IMMEDIATE;
+
+
+SQL> select database_role from v$database;
+
+
+
+================ Convert snapshot to physical standby==================
+
+Select DB_UNIQUE_NAME, OPEN_MODE, DATABASE_ROLE from v$database;
+select name, guarantee_flashback_database from v$restore_point;
+if RAC....shutdown all nodes
+
+startup mount
+ALTER DATABASE CONVERT TO PHYSICAL STANDBY; 
+
+
+============== Convert physical standby to snapshot =================
+
+select DB_UNIQUE_NAME, OPEN_MODE, DATABASE_ROLE from v$database;
+Show parameter db_recovery_file_dest
+select flashback_on from v$database; -------Flashback must be on
+
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE CANCEL;
+startup mount
+ALTER DATABASE CONVERT TO SNAPSHOT STANDBY;
+
+
+ 
+=========local backup ======
+ 
+ RUN
+{ 
+  ALLOCATE CHANNEL disk1 DEVICE TYPE DISK FORMAT '/u99/oracle/rman_backup/%U';
+  ALLOCATE CHANNEL disk2 DEVICE TYPE DISK FORMAT '/u99/oracle/rman_backup/%U';
+  ALLOCATE CHANNEL disk3 DEVICE TYPE DISK FORMAT '/u99/oracle/rman_backup/%U';
+  BACKUP DATABASE PLUS ARCHIVELOG;
+} 
+ 
+RUN
+{
+  ALLOCATE CHANNEL ch11 TYPE DISK MAXPIECESIZE 20G;
+  ALLOCATE CHANNEL ch12 TYPE DISK MAXPIECESIZE 20G;
+  ALLOCATE CHANNEL ch13 TYPE DISK MAXPIECESIZE 20G;
+  ALLOCATE CHANNEL ch14 TYPE DISK MAXPIECESIZE 20G;
+  ALLOCATE CHANNEL ch15 TYPE DISK MAXPIECESIZE 20G;
+  ALLOCATE CHANNEL ch16 TYPE DISK MAXPIECESIZE 20G;
+  ALLOCATE CHANNEL ch17 TYPE DISK MAXPIECESIZE 20G;
+  ALLOCATE CHANNEL ch18 TYPE DISK MAXPIECESIZE 20G;
+  ALLOCATE CHANNEL ch19 TYPE DISK MAXPIECESIZE 20G;
+  ALLOCATE CHANNEL ch110 TYPE DISK MAXPIECESIZE 20G;
+  BACKUP 
+  FORMAT '/opt/backup/rman_backup/%d_D_%T_%u_s%s_p%p'
+  DATABASE
+  CURRENT CONTROLFILE
+  FORMAT '/opt/backup/rman_backup/%d_C_%T_%u'
+  SPFILE
+  FORMAT '/opt/backup/rman_backup/%d_S_%T_%u'
+  PLUS ARCHIVELOG
+  FORMAT '/opt/backup/rman_backup/%d_A_%T_%u_s%s_p%p';
+  RELEASE CHANNEL ch11;
+  RELEASE CHANNEL ch12;
+  RELEASE CHANNEL ch13;
+  RELEASE CHANNEL ch14;
+} 
+ 
+
+
+
+=========================================================================
+
+
+dgmgrl -logfile /oracle/EP7/saptrace/diag/rdbms/ep7/EP7/trace/obsrv.log sys/Asahi#1234@EP7 "start observer" &
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DGMGRL
+======
+
+DGMGRL> connect /
+Connected.
+DGMGRL> show configuration
+
+Configuration - t1exm1d2_dr
+
+  Protection Mode: MaxAvailability
+  Databases:
+    t1exm1d2 - Primary database
+    t2exm1d2 - Physical standby database
+
+Fast-Start Failover: DISABLED
+
+Configuration Status:
+SUCCESS
+
+DGMGRL> edit database t1exm1d2 set property logxptmode=ASYNC;
+Property "logxptmode" updated
+DGMGRL> edit configuration set protection mode as maxperformance;
+Succeeded.
+DGMGRL>  show configuration
+
+Configuration - t1exm1d2_dr
+
+  Protection Mode: MaxPerformance
+  Databases:
+    t1exm1d2 - Primary database
+    t2exm1d2 - Physical standby database
+
+Fast-Start Failover: DISABLED
+
+Configuration Status:
+SUCCESS
+
+DGMGRL> SHOW DATABASE t2exm1d2
+
+Database - t2exm1d2
+
+  Role:            PHYSICAL STANDBY
+  Intended State:  APPLY-ON
+  Transport Lag:   0 seconds (computed 2 seconds ago)
+  Apply Lag:       0 seconds (computed 2 seconds ago)
+  Apply Rate:      1.17 MByte/s
+  Real Time Query: ON
+  Instance(s):
+    t2exm1d2
+
+Database Status:
+SUCCESS
+
+DGMGRL>
+
+
+===============================================================================
+
+ Database Warning(s):
+    ORA-16826: apply service state is inconsistent with the DelayMins property
+
+Database Status:
+WARNING
+
+DGMGRL>  edit database t2exm3d2 set state=apply-off;
+Succeeded.
+DGMGRL> edit database t2exm3d2 set state=apply-on;
+Succeeded.
+DGMGRL> show database t2exm3d2
+
+Database - t2exm3d2
+
+  Role:            PHYSICAL STANDBY
+  Intended State:  APPLY-ON
+  Transport Lag:   0 seconds (computed 0 seconds ago)
+  Apply Lag:       0 seconds (computed 0 seconds ago)
+  Apply Rate:      0 Byte/s
+  Real Time Query: ON
+  Instance(s):
+    t2exm3d2
+
+Database Status:
+SUCCESS
+
+DGMGRL>
+
+========================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Standby Script
+
+select THREAD# ,max(SEQUENCE#) FROM V$ARCHIVED_LOG group by THREAD#;
+
+SELECT ARCH.THREAD# "Thread", ARCH.SEQUENCE# "Last Sequence Received", APPL.SEQUENCE# "Last Sequence Applied", 
+(ARCH.SEQUENCE# - APPL.SEQUENCE#) "Difference"
+FROM
+(SELECT THREAD# ,SEQUENCE# FROM V$ARCHIVED_LOG WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$ARCHIVED_LOG GROUP BY THREAD#)) ARCH,
+(SELECT THREAD# ,SEQUENCE# FROM V$LOG_HISTORY WHERE (THREAD#,FIRST_TIME ) IN (SELECT THREAD#,MAX(FIRST_TIME) FROM V$LOG_HISTORY GROUP BY THREAD#)) APPL
+WHERE ARCH.THREAD# = APPL.THREAD#
+ORDER BY 1; 
+
+How to find what error recorded for redo transport service-
+=============================================
+SELECT gvi.thread#, timestamp, message
+FROM gv$dataguard_status gvds, gv$instance gvi
+WHERE gvds.inst_id = gvi.inst_id AND severity in ('Error','Fatal')
+ORDER BY timestamp, thread#;  
+
+select inst_id,status,error from gv$archive_dest where dest_id=2;
+
+
+===========================================================
+
+Doc ID 1543367.1-
+
+Physical Standby Database is mounted:
+
+
+
+We can copy and rename the Datafile while Managed Recovery is stopped. If the Physical Standby Database is opened READ ONLY you have to shutdown/startup mount first (and open again after renaming). You can use either using OS-Tools and SQL*PLUS, eg.
+% cp <Source> <Destination>
+
+SQL> alter database rename file '<Path of Source datafilename or File#>' to ‘<Destination path and name>’;
+
+SQL> alter database database open; # If Active Data Guard is used
+
+==>> or using RMAN:
+
+RMAN> connect target /
+
+RMAN> run
+
+      {
+
+      backup as copy datafile <File#> format '<Destination path and name>';
+
+      switch datafile <File#> to datafilecopy '<Destination path from above backup command>';
+
+      }
+
+==>> or
+
+Rman> run { backup as copy datafile <file#> format '<destination Path and name>'; }
+
+Rman> Switch datafile <file#> to copy ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+AOTS Activity
+=============
+
+$ cat cr_standby.rcv
+connect target sys/Aots_tm_sys#1@p1aot2d5_dup.db.att.com
+connect auxiliary sys/Aots_tm_sys#1@p1aot2d6_dup
+
+run {
+  allocate channel prmy1 type disk;
+  allocate channel prmy2 type disk;
+  allocate channel prmy3 type disk;
+  allocate channel prmy4 type disk;
+  allocate channel prmy5 type disk;
+  allocate channel prmy6 type disk;
+  allocate channel prmy7 type disk;
+  allocate channel prmy8 type disk;
+  allocate channel prmy9 type disk;	
+  allocate channel prmy10 type disk;
+  allocate channel prmy11 type disk;
+  allocate channel prmy12 type disk;
+  allocate auxiliary channel stby1 type disk;
+  allocate auxiliary channel stby2 type disk;
+  allocate auxiliary channel stby3 type disk;
+  allocate auxiliary channel stby4 type disk;
+  allocate auxiliary channel stby5 type disk;
+  allocate auxiliary channel stby6 type disk;
+  allocate auxiliary channel stby7 type disk;
+  allocate auxiliary channel stby8 type disk;
+  allocate auxiliary channel stby9 type disk;
+  allocate auxiliary channel stby10 type disk;
+  allocate auxiliary channel stby11 type disk;
+  allocate auxiliary channel stby12 type disk;
+ duplicate target database for standby from active database dorecover nofilenamecheck;
+}
+
+
+
+================================================================
+
+SELECT THREAD#, GROUP#, BYTES/1024/1024, 'ONLINE' AS TYPE, status FROM GV$LOG
+ UNION
+ SELECT THREAD#, GROUP#, BYTES/1024/1024, 'STANDBY' AS TYPE, status FROM GV$STANDBY_LOG
+ ORDER BY 2;
+
+
+ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT='MANUAL';
+
+select member from v$logfile order by group#, member;
+
+select 'alter database drop standby logfile group '|| group# ||';' from v$standby_log order by group#;
+
+select 'alter database drop logfile group '|| group# ||';' from v$log order by group#;
+
+SELECT GROUP#, STATUS FROM V$LOG order by group#;
+ALTER DATABASE ADD LOGFILE GROUP 1 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_1a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_1b.log') SIZE 512m;
+ALTER DATABASE ADD LOGFILE GROUP 2 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_2a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_2b.log') SIZE 512m;
+ALTER DATABASE ADD LOGFILE GROUP 3 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_3a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_3b.log') SIZE 512m;
+
+ALTER DATABASE ADD LOGFILE GROUP 4 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_4a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_4b.log') SIZE 512m;
+ALTER DATABASE ADD LOGFILE GROUP 5 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_5a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_5b.log') SIZE 512m;
+ALTER DATABASE ADD LOGFILE GROUP 6 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_6a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_6b.log') SIZE 512m;
+
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 7 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_7a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_7b.log') SIZE 512m;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 8 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_8a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_8b.log') SIZE 512m;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 9 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_9a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_9b.log') SIZE 512m;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 10 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_10a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_10b.log') SIZE 512m;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 11 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_11a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_11b.log') SIZE 512m;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 12 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_12a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_12b.log') SIZE 512m;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 13 ( '/opt/app/p2aot1d8/oraredo01/p2aot1d8/redo_13a.log', '/opt/app/p2aot1d8/oraredo02/p2aot1d8/redo_13b.log') SIZE 512m;
+
+
+
+
+=========================================================================
+
+
+$ cat cr_standby.rcv
+connect target sys/Aots_tm_sys@s1aot3d1.DB.ATT.COM
+connect auxiliary sys/Aots_tm_sys@s1aot2d3.DB.ATT.COM
+
+run {
+  allocate channel prmy1 type disk;
+  allocate channel prmy2 type disk;
+  allocate channel prmy3 type disk;
+  allocate channel prmy4 type disk;
+  allocate channel prmy5 type disk;
+  allocate channel prmy6 type disk;
+  allocate channel prmy7 type disk;
+  allocate channel prmy8 type disk;
+  allocate channel prmy9 type disk;
+  allocate channel prmy10 type disk;
+  allocate channel prmy11 type disk;
+  allocate channel prmy12 type disk;
+  allocate auxiliary channel stby1 type disk;
+  allocate auxiliary channel stby2 type disk;
+  allocate auxiliary channel stby3 type disk;
+  allocate auxiliary channel stby4 type disk;
+  allocate auxiliary channel stby5 type disk;
+  allocate auxiliary channel stby6 type disk;
+  allocate auxiliary channel stby7 type disk;
+  allocate auxiliary channel stby8 type disk;
+  allocate auxiliary channel stby9 type disk;
+  allocate auxiliary channel stby10 type disk;
+  allocate auxiliary channel stby11 type disk;
+  allocate auxiliary channel stby12 type disk;
+ duplicate target database for standby from active database dorecover nofilenamecheck;
+}
+
+
+===========================================================================================================
+
+RMAN> connect target sys/Aots_tm_sys@s1aot3d1_dup.DB.ATT.COM
+
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+ORA-01031: insufficient privileges
+
+
+or
+
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-04006: error from auxiliary database: ORA-01031: insufficient privileges
+
+Solution:
+grant sysdba to sys;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DG Switchover
+=============
+
+DATAGUARD SWITCHOVER GUIDE (PHYSICAL STANBY) 
+    (Primary to standby and standby to primary)
+
+
+QUICK GUIDE
+
+old primary site
+SQL>select switchover_status from v$database;
+SQL>alter database commit to switchover to physical standby with session shutdown;
+SQL>shutdown immediate
+SQL>startup nomount
+SQL>alter database mount standby database;
+SQL>alter system set log_archive_dest_state_3=defer;
+
+old standby site
+SQL>select switchover_status from v$database;
+SQL>alter database commit to switchover to primary with session shutdown;
+SQL>shutdown immediate
+SQL>startup
+
+old primary site
+SQL>recover managed standby database disconnect
+
+
+EXPLANATIONS
+
+1. Verify that it is possible to perform a switchover operation. 
+
+On the primary query the switchover_status column of v$database to verify that
+switchover to standby is possible.
+SQL> select switchover_status from v$database;
+
+SWITCHOVER_STATUS
+------------------
+TO STANDBY
+In order to perform a switchover all sessions to the database need to be disconnected. This process has been automated with the “with session shutdown” clause that has been added to the alter database commit to switchover command. 
+If SWITCHOVER_STATUS returns SESSIONS ACTIVE then you should either disconnect all sessions manually or when performing step 2 you should append the “with session shutdown” clause. 
+For example:
+SQL> alter database commit to switchover to standby with session shutdown;
+Note that the clause also works with the switchover to primary command.
+The SWITCHOVER_STATUS column of v$database can have the following values:
+NOT ALLOWED - Either this is a standby database and the primary database has not been switched first, or this is a primary database and there are no standby databases. 
+SESSIONS ACTIVE - Indicates that there are active SQL sessions attached to the primary or standby database that need to be disconnected before the switchover operation is permitted. 
+SWITCHOVER PENDING - This is a standby database and the primary database switchover request has been received but not processed. 
+SWITCHOVER LATENT - The switchover was in pending mode, but did not complete and went back to the primary database. 
+TO PRIMARY - This is a standby database, with no active sessions, that is allowed to switch over to a primary database. 
+TO STANDBY - This is a primary database, with no active sessions, that is allowed to switch over to a standby database. 
+RECOVERY NEEDED - This is a standby database that has not received the switchover request.
+
+During normal operations it is acceptable to see the following values for
+SWITCHOVER_STATUS on the primary to be SESSIONS ACTIVE or TO STANDBY. 
+During normal operations on the standby it is acceptable to see the values of
+NOT ALLOWED or SESSIONS ACTIVE.
+
+2. Convert the primary database to the new standby:
+SQL> alter database commit to switchover to physical standby ;
+Database altered.
+3. Shutdown the former primary and mount as a standby database:
+SQL> shutdown immediate
+ORA-01507: database not mounted
+ORACLE instance shut down.
+SQL> startup nomount
+ORACLE instance started.
+Total System Global Area 85020944 bytes
+Fixed Size 454928 bytes
+Variable Size 71303168 bytes
+Database Buffers 12582912 bytes
+Redo Buffers 679936 bytes
+SQL> alter database mount standby database;
+Database altered.
+4. Defer the remote archive destination on the old primary:
+SQL> alter system set log_archive_dest_state_3=defer;
+5. Verify that the physical standby can be converted to the new primary:
+SQL> select switchover_status from v$database;
+SWITCHOVER_STATUS
+------------------
+SWITCHOVER PENDING 
+Note that if the status returns SESSIONS ACTIVE then you should append the with session shutdown clause to the command in step 6.
+6. Convert the physical standby to the new primary:
+SQL> alter database commit to switchover to primary;
+Database altered.
+7. Shutdown and startup the new primary:
+SQL> shutdown immediate
+ORA-01507: database not mounted
+ORACLE instance shut down.
+SQL> startup
+ORACLE instance started.
+Total System Global Area 85020944 bytes
+Fixed Size 454928 bytes
+Variable Size 71303168 bytes
+Database Buffers 12582912 bytes
+Redo Buffers 679936 bytes
+Database mounted.
+Database opened.
+8. Enable remote archiving on the new primary to the new standby:
+SQL> alter system set log_archive_dest_state_3=enable;
+9. Start managed recover on the new standby database:
+SQL> recover managed standby database disconnect; 
+Media recovery complete.
+
+SQL> select name,open_mode,database_role from v$database;
+NAME OPEN_MODE DATABASE_ROLE
+--------- -------------------- ----------------
+RTS MOUNTED PHYSICAL STANDBY
+Following sort of SQL command will help to bring up standby as primary:
+SQL> alter database recover managed standby database finish;
+Database altered.
+SQL> alter database activate standby database;
+Database altered.
+Shutdown and startup
+
+
+
+
+select status,instance_name,database_role,open_mode from v$database,v$Instance;
+
+select thread#,max(sequence#) from v$archived_log where applied='YES' group by thread#;
+
+select flashback_on from v$database;
+
+alter database recover managed standby database cancel;
+
+startup mount
+
+alter database convert to snapshot standby;
+
+set lines 1000
+col NAME for a30
+col TIME for a35
+col SCN  for 9999999999999999
+col STORAGE_SIZE for 9999999999999999
+select scn,name,STORAGE_SIZE,TIME,GUARANTEE_FLASHBACK_DATABASE from v$restore_point;
+
+
+alter database open;
+
+
+
+startup mount
+
+alter database convert to physical standby;
+
+shut immediate
+
+startup
+
+
+
+
+
+How To Calculate The Required Network Bandwidth Transfer Of Redo In Data Guard Environments (Doc ID 736755.1)
+
+select * from v$sysmetric_history where metric_name = 'Redo Generated Per Sec';
+
+512000
+
+Required bandwidth = ((Redo rate bytes per sec. / 0.70) * 8) / 1,000,000 = bandwidth in Mbps 
+Required bandwidth = ((512000/0.70) * 8) /1,000,000
+Required bandwidth = 5.85 Mbps
+
+
+
+=====================================================================================
+====================================
+= Delete Applied Archivelog Script =
+====================================
+$ cat delete_applied_arch.sh
+#!/bin/sh
+
+export ORACLE_BASE=/u03/app/oracle
+export ORACLE_HOME=/u03/app/oracle/product/19.0.0/dbhome
+export PATH=$ORACLE_HOME/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/of2ay7798/.local/bin:/home/of2ay7798/bin:/home/oracle/.local/bin:/home/oracle/bin:/u03/app/oracle/product/19.0.0/dbhome/bin
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:/lib:/u03/app/oracle/product/19.0.0/dbhome/lib
+export ORACLE_SID=hnoemprd
+export CONN_STR="/ as sysdba"
+# put current date as yyyy-mm-dd_HH:MM:SS in $date
+DATE=$(date '+%Y-%m-%d_%H:%M:%S')
+# Delete the old rcv file
+rm /home/oracle/dba/log/rm_old_sby.rcv
+
+sqlplus -s /nolog <<SQL_SCRIPT
+connect $CONN_STR
+@/home/oracle/dba/delete_applied.arch.sql
+SQL_SCRIPT
+
+# delete applied archivelogs from archivelog
+rman target / log="/home/oracle/dba/log/rm_old_sby${ORACLE_SID}_${DATE}.log" <<RMAN_SCRIPT
+@/home/oracle/dba/log/rm_old_sby.rcv
+exit
+RMAN_SCRIPT
+
+
+
+
+cat /home/oracle/dba/delete_applied.arch.sql
+set heading off
+spool /home/oracle/dba/log/rm_old_sby.rcv
+
+select 'delete noprompt archivelog sequence between '||min(sequence#)||' and '||max(sequence#)||' thread '||thread#||';'
+from v$archived_log
+where
+applied='YES' and deleted='NO'
+group by thread#, applied, deleted;
+
+spool off;
+exit;
+
+
+===========================================================================
+EDIT DATABASE ‘secondary’ SET PROPERTY ‘LogXptMode’='SYNC’;
+EDIT DATABASE 'South_Sales' SET STATE='APPLY-OFF';
+=============================================================================
+
+
+connect target sys/Welcome#1234@USPRD198
+connect auxiliary sys/Welcome#1234@USPRD198DR
+run { 
+Allocate channel c1 device type disk; 
+Allocate channel c2 device type disk; 
+Allocate channel c3 device type disk; 
+Allocate channel c4 device type disk; 
+Allocate channel c5 device type disk; 
+Allocate channel c6 device type disk; 
+Allocate channel c7 device type disk; 
+Allocate channel c8 device type disk; 
+Allocate channel c9 device type disk; 
+Allocate channel c10 device type disk; 
+Allocate channel c11 device type disk; 
+Allocate channel c12 device type disk; 
+Allocate auxiliary channel c111 device type disk; 
+Allocate auxiliary channel c112 device type disk; 
+Allocate auxiliary channel c113 device type disk; 
+Allocate auxiliary channel c114 device type disk; 
+Allocate auxiliary channel c115 device type disk; 
+Allocate auxiliary channel c116 device type disk; 
+Allocate auxiliary channel c117 device type disk; 
+Allocate auxiliary channel c118 device type disk; 
+duplicate target database for standby from active database dorecover nofilenamecheck;
+release channel c1; 
+release channel c2; 
+release channel c3; 
+release channel c4; 
+release channel c5; 
+release channel c6; 
+release channel c7; 
+release channel c8; 
+release channel c9; 
+release channel c10; 
+release channel c11; 
+release channel c12; 
+}
+
+
+
+run { 
+Allocate channel c1 device type disk; 
+Allocate channel c2 device type disk; 
+Allocate channel c3 device type disk; 
+Allocate channel c4 device type disk; 
+Allocate channel c5 device type disk; 
+Allocate channel c6 device type disk; 
+Allocate channel c7 device type disk; 
+Allocate channel c8 device type disk; 
+Allocate channel c9 device type disk; 
+Allocate channel c10 device type disk; 
+Allocate channel c11 device type disk; 
+Allocate channel c12 device type disk; 
+RECOVER STANDBY DATABASE FROM SERVICE <primary service name> ;
+release channel c1; 
+release channel c2; 
+release channel c3; 
+release channel c4; 
+release channel c5; 
+release channel c6; 
+release channel c7; 
+release channel c8; 
+release channel c9; 
+release channel c10; 
+release channel c11; 
+release channel c12; 
+}
+
+
+
+
