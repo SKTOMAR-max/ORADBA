@@ -1,0 +1,129 @@
+=Gather Stat Jobs=
+
+#!/bin/bash
+# Script to identify and generate statistics on stale objects in Oracle database
+
+# Set environment variables
+ORACLE_SID=SLM12DEV
+ORACLE_BASE=/oracle/app/oracle/product
+ORACLE_HOME=/oracle/app/oracle/product/19.3.0
+PATH=/home/oracle/local/bin:/home/oracle/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/u01/app/oracle/product/19.0.0/bin
+export ORACLE_HOME ORACLE_SID ORACLE_BASE PATH ORACLE_PDB_SID
+#export PATH=$ORACLE_HOME/bin:$PATH
+#export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+
+# Connect to Oracle database as sysdba
+$ORACLE_HOME/bin/sqlplus -s / as sysdba << EOF
+ set lin 32000 pages 10000
+ set timing on
+ col OWNER form a10
+ col TABLE_NAME form a30
+ col PARTITION_NAME form a30
+ set colsep '|'
+-- Query to identify stale objects
+SELECT owner TABLE_NAME, last_analyzed, stale_stats
+FROM dba_tab_statistics
+WHERE stale_stats = 'YES' and owner like 'PIN%'
+ORDER BY owner;
+
+-- Generate statistics on all stale objects
+
+select 'This is generated AT:==>)', to_char(sysdate,'dd/mm/yyyy hh24:mi:ss') " "  from dual;
+alter session set nls_date_format = 'DD-MON-YYYY HH24:MI:SS';
+select sysdate from dual;
+
+
+EXEC DBMS_STATS.GATHER_SCHEMA_STATS(ownname => 'STARLIMS_DICT', estimate_percent => DBMS_STATS.AUTO_SAMPLE_SIZE, method_opt => 'FOR ALL COLUMNS SIZE AUTO', granularity=>'ALL', cascade => TRUE, Degree => 60);
+EXEC DBMS_STATS.GATHER_SCHEMA_STATS(ownname => 'STARLIMS_DATA', estimate_percent => DBMS_STATS.AUTO_SAMPLE_SIZE, method_opt => 'FOR ALL COLUMNS SIZE AUTO',granularity=>'ALL',cascade => TRUE, Degree => 60);
+
+#Database STAT Full Gather Job
+-- EXEC DBMS_STATS.gather_database_stats; 
+
+select 'This is completed AT:==>)', to_char(sysdate,'dd/mm/yyyy hh24:mi:ss') " "  from dual;
+
+-- Query to identify stale objects
+SELECT owner, TABLE_NAME, last_analyzed, stale_stats
+FROM dba_tab_statistics
+WHERE stale_stats = 'YES' and owner like 'STAR%'
+ORDER BY owner;
+exit
+EOF
+
+
+###################################
+
+
+
+
+++++++++++++++
+-- Auto Stat Gather Status
+
+SQL> select client_name, status from dba_autotask_operation;
+
+exec dbms_scheduler.disable('GATHER_STATS_JOB');
+
+SELECT STATE FROM DBA_SCHEDULER_JOBS WHERE JOB_NAME = 'GATHER_STATS_JOB';
+
+SELECT JOB_NAME, LAST_START_DATE, NEXT_RUN_DATE
+FROM DBA_SCHEDULER_JOBS
+WHERE JOB_NAME ='GATHER_STATS_JOB';
+
+SELECT JOB_NAME, STATUS, ERROR# , ACTUAL_START_DATE
+FROM DBA_SCHEDULER_JOB_RUN_DETAILS
+WHERE JOB_NAME = 'GATHER_STATS_JOB'
+ORDER BY ACTUAL_START_DATE DESC;
+
+SELECT CLIENT_NAME, STATUS
+FROM DBA_AUTOTASK_CLIENT
+WHERE CLIENT_NAME = 'auto optimizer stats collection';
+
+
+SELECT TABLE_NAME, LAST_ANALYZED
+FROM DBA_TAB_STATISTICS
+-- WHERE OWNER like 'STAR%'
+WHERE OWNER like 'SLIMS%'
+ORDER BY LAST_ANALYZED DESC;
+
+-- Disable
+exec DBMS_AUTO_TASK_ADMIN.DISABLE(client_name=>'auto optimizer stats collection', operation => NULL, window_name => NULL);
+
+select client_name, status from dba_autotask_operation;
+
+-- Enable
+exec DBMS_AUTO_TASK_ADMIN.ENABLE(client_name=>'auto optimizer stats collection', operation => NULL, window_name => NULL);
+
+
+
+========================================
+# Monitor Stat Gether Jobs
+
+select sid,inst_id,opname,totalwork,sofar,start_time,time_remaining
+from gv$session_longops
+where totalwork<>sofar
+/ 
+
+
+
+ SET lines 300
+col OPERATION FOR a30
+ col TARGET FOR a40
+ col START_TIME FOR a40
+col END_TIME FOR a40
+COL STATUS FOR A10
+select OPERATION,TARGET,START_TIME,END_TIME,STATUS from dba_optstat_operations ORDER BY start_time DESC;
+
+
+
+========================
+## Gather Stat Job on Schema ##
+0 1 * * 1,2,3,4,5 /home/oracle/scripts/Gather_DB_Stat_SCHEMAa.sh >> /home/oracle/scripts/logs/Gather_DB_Stat_SCHEMA.log
+
+## Gather Full DB Stat ##
+0 1 * * 6,7 /home/oracle/scripts/Gather_DB_Stat_FULL.sh >> /home/oracle/scripts/logs/Gather_DB_Stat_FULL.log
+
+/home/oracle/scripts/Gather_stat_FULL_DB.sh
+/home/oracle/scripts/Gather_stat_STAR_Schema.sh
+
+
+
+
