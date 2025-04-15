@@ -1,5 +1,9 @@
 recipient1="infra-oracle@haleon.com"
 
+allowed_user=("SANDEEP" "VINAY" "ARISA" "PREM" "SUJOY" "ARCHIT" "PRASHANT" "SNEHITH")  # List of allowed users (ABC and XYZ)
+names=("SANDEEP" "VINAY" "ARISA" "PREM" "SUJOY" "ARCHIT" "PRASHANT" "SNEHITH")  # List of allowed users (ABC and XYZ)
+
+
 PATCH_RELEASE=19.27.0.0.0
 COMBO_ZIP="p37262172_190000_Linux-x86-64.zip"
 #RU_ZIP="p36912597_190000_Linux-x86-64.zip"                   # Replace with your OPatch zip file - Static
@@ -12,5 +16,15 @@ COMBO_PATCH_DIR=37262172                                    # Directory containi
 RU_PATCH_ID=37260974                                         # RU Patch ID - Static
 OJVM_PATCH_ID=37102264                                       # OJVM Patch ID - Static
 JDK_PATCH_ID=37213431                                       # JDK Patch ID - Static
+
+
+CURL_PULL_SCRIPT=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/pull_script.sh 
+CURL_OPATCH=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/wget_OPATCH.sh
+CURL_COMBO=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/wget_combo.sh 
+CURL_JDK=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/wget_JDK.sh
+CURL_DB_PRECHECKS=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/DB_Prechecks.sql  
+CURL_DB_POSTCHECKS=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/DB_Postchecks.sql 
+CURL_VALID_USERS=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/valid_users.txt 
+CURL_EMAIL=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/email_db_status.sql 
 
 
