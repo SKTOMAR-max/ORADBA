@@ -1,0 +1,16 @@
+recipient1="infra-oracle@haleon.com"
+
+PATCH_RELEASE=19.27.0.0.0
+COMBO_ZIP="p37262172_190000_Linux-x86-64.zip"
+#RU_ZIP="p36912597_190000_Linux-x86-64.zip"                   # Replace with your OPatch zip file - Static
+#OJVM_ZIP="p36878697_190000_Linux-x86-64.zip"                 # Replace with your OPatch zip file - Static
+JDK_ZIP="p37213431_190000_Linux-x86-64.zip"                 # Replace with your OPatch zip file - Static
+OPATCH_ZIP="p6880880_190000_Linux-x86-64.zip"                # Replace with your OPatch zip file - Static
+
+
+COMBO_PATCH_DIR=37262172                                    # Directory containing the patch zip file - Static
+RU_PATCH_ID=37260974                                         # RU Patch ID - Static
+OJVM_PATCH_ID=37102264                                       # OJVM Patch ID - Static
+JDK_PATCH_ID=37213431                                       # JDK Patch ID - Static
+
+
