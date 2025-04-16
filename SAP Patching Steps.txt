@@ -1,0 +1,132 @@
+
+
+Copy the software to sapbundle folder from /oracle/RPP/oraarch/patch/
+For example:  
+cp SAP19P_2411-70004508.ZIP /oracle/RPP/19.0.0/sapbundle/
+
+
+--- Create directory in /oracle/RPP/oraarch folder with directory name patch                                      
+For Example: 
+cd  /oracle/RPP/oraarch
+mkdir patch
+
+========================================
+Prechecks:
+
+Take the backup of spfile and pfile
+For Example:
+cd $ORACLE_HOME/dbs
+cp -r initRPP.ora $ORACLE_HOME/dbs/initRPP.ora_bkp
+sqlplus / as sysdba
+create pfile='/oracle/RPP/oraarch/patch/RPP_pfile.ora' from spfile;
+
+--
+
+
+Take the backup of oracle home and oracle inventory file backup 
+For Example: 
+cd /oracle/RPP
+nohup tar -pczvf /oracle/RPP/oraarch/patch/DB_home_bkp_19Apr2025.tar 19.0.0 &
+
+cd /oracle
+nohup tar -pczvf /oracle/RPP/oraarch/patch/oraInventory_bkp_19Apr2025.tar oraInventory &
+
+
+
+$ORACLE_HOME/OPatch/opatch version
+---
+
+Take the backup of Opatch and Mopatch directory
+For Example: 
+cd /oracle/RPP/19.0.0     
+tar -pczvf /oracle/RPP/oraarch/patch/OPatch_BKP_19Apr2025.tar OPatch 
+tar -pczvf /oracle/RPP/oraarch/patch/MOPatch_BKP_19Apr2025.tar MOPatch
+
+
+
+Opatch Upgrade
+---------------
+Remove the old Opatch and Mopatch directory
+For example:
+cd /oracle/RPP/19.0.0
+rm -rf OPatch MOPatch
+
+
+
+---
+Unzip the software in /oracle/RPP/oraarch/patch/  
+For Example: 
+unzip -qd /oracle/RPP/19.0.0 OPATCH19P_2411-70004508.ZIP -x SIGNATURE.SMF
+
+unzip -qd $ORACLE_HOME $OPATCH_ZIP -x SIGNATURE.SMF
+
+
+---
+Check OPatch version:
+
+$ORACLE_HOME/OPatch/opatch version
+
+Make sure that the updated version is latest.
+
+
+
+MOPATCH UPGRADE
+---------------
+Unzip the software and move the folder to MOpatch directory
+For example: 
+unzip -qd /oracle/RPP/19.0.0/sapbundle SAP19P_2411-70004508.ZIP 'SBP_192500241015_202411/MOPatch/*'    
+mv /oracle/RPP/19.0.0/sapbundle/SBP_192500241015_202411/MOPatch /oracle/RPP/19.0.0/MOPatch
+
+
+
+PERMISSION CHANGE
+-----------------
+Change the permission of MOpatch and Opatch directory
+For Example: 
+cd /oracle/RPP/19.0.0
+chmod -R 777 MOPatch
+chmod -R 777 OPatch
+
+
+Change the permission and ownership of oradism file and jssu file
+For Example: 
+chown oraRPP:dba  /oracle/RPP/19.0.0/bin/oradism
+chmod 777 /oracle/RPP/19.0.0/bin/oradism
+
+chown oraRPP:dba  /oracle/RPP/19.0.0/bin/jssu
+chmod 777 /oracle/RPP/19.0.0/bin/jssu
+
+
+
+
+--------------
+Patching Steps
+--------------
+
+Stop the database and stop the listener services
+For Example:  
+sqlplus / as sysdba
+SQL> shutdown immediate
+SQL> !lsnrctl stop
+
+
+
+--
+Apply SBP patch 
+For Example: 
+cd /oracle/RPP/oraarch/patch
+
+env ORACLE_HOME=/oracle/RPP/19.0.0 /oracle/RPP/19.0.0/MOPatch/mopatch.sh -d -v -s SAP19P_2411-70004508.ZIP | tee -a patch_SAP19P_2411-70004508.log
+
+env ORACLE_HOME=/oracle/RPP/19.0.0 /oracle/RPP/19.0.0/MOPatch/mopatch.sh -v -s SAP19P_2411-70004508.ZIP | tee -a patch_SAP19P_2411-70004508.log
+
+
+
+--
+startup
+
+@sapbundle/SBP_192500241015_202411/catsbp.sql
+
+
+
+
