@@ -37,7 +37,7 @@ source "$source_file"
 echo "--------------------------------------------------------"
 echo
 echo "Downloading OPATCH patch......"
-curl -s $$CURL_OPATCH >  $PATCHTMP/wget_OPATCH.sh
+curl -s $CURL_OPATCH >  $PATCHTMP/wget_OPATCH.sh
 chmod +x $PATCHTMP/wget_OPATCH.sh
 $PATCHTMP/wget_OPATCH.sh &
 echo
@@ -59,7 +59,7 @@ echo "--------------------------------------------------------"
 
 echo
 echo "Downloading Combo patch for DB-RU & OJVM patch....."
-curl -s https://raw.githubusercontent.com/consumer-tech/Oracle_Patch_Automation/refs/heads/main/wget_combo.sh?token=GHSAT0AAAAAADCBW7AKFSTTPSNETL473QTKZ7ZAT3Q >  $PATCHTMP/wget_combo.sh
+curl -s $CURL_COMBO >  $PATCHTMP/wget_combo.sh
 chmod +x $PATCHTMP/wget_combo.sh
 $PATCHTMP/wget_combo.sh &
 echo
@@ -78,7 +78,7 @@ echo "DB-RU & OJVM patch downloaded!!!"
 echo "--------------------------------------------------------"
 echo
 echo "Downloading JDK patch......"
-curl -s https://raw.githubusercontent.com/consumer-tech/Oracle_Patch_Automation/refs/heads/main/wget_JDK.sh?token=GHSAT0AAAAAADCBW7AKNA5OBQU6CZVOB2QWZ7ZAUHA >  $PATCHTMP/wget_JDK.sh
+curl -s $CURL_JDK >  $PATCHTMP/wget_JDK.sh
 chmod +x $PATCHTMP/wget_JDK.sh 
 $PATCHTMP/wget_JDK.sh &
 echo
