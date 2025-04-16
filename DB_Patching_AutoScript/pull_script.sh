@@ -37,7 +37,7 @@ source "$source_file"
 echo "--------------------------------------------------------"
 echo
 echo "Downloading OPATCH patch......"
-curl -s https://raw.githubusercontent.com/consumer-tech/Oracle_Patch_Automation/refs/heads/main/wget_OPATCH.sh?token=GHSAT0AAAAAADCBW7ALLQ5HCW5BCOL6OY7UZ7ZATCA >  $PATCHTMP/wget_OPATCH.sh
+curl -s $$CURL_OPATCH >  $PATCHTMP/wget_OPATCH.sh
 chmod +x $PATCHTMP/wget_OPATCH.sh
 $PATCHTMP/wget_OPATCH.sh &
 echo
