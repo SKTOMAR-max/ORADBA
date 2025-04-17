@@ -18,6 +18,7 @@ JDK_PATCH_ID=37542054                                       # JDK Patch ID - Sta
 
 AGENT_JDK_ZIP="p37766455_180451_Linux-x86-64.zip"
 EM_JDK_PATCH="jdk-8u451-linux-x64.tar.gz"
+RM_JDK_PATCH="jdk-8u451"
 EM_JDK="jdk1.8.0_451"
 
 CURL_PULL_SCRIPT=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/pull_script.sh 
