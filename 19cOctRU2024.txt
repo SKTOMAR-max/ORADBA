@@ -1,3 +1,26 @@
+##PowerShell Script
+
+# Simulates mouse movement to prevent system from locking due to inactivity
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class MouseMover {
+[DllImport("user32.dll", CharSet=CharSet.Auto, CallingConvention=CallingConvention.StdCall)]
+public static extern void mouse_event(long dwFlags, long dx, long dy, long cButtons, long dwExtraInfo);
+public const int MOUSEEVENTF_MOVE = 0x0001;
+public static void MoveMouse() {
+mouse_event(MOUSEEVENTF_MOVE, 1, 0, 0, 0); // Moves the mouse slightly
+}
+}
+"@
+ 
+while ($true) {
+[MouseMover]::MoveMouse() # Call the function to move the mouse
+Start-Sleep -Seconds 60 # Wait for 60 seconds before next move
+}
+
+
+
 ======================================================================================
 = Patch 36866623: COMBO OF OJVM COMPONENT 19.25.0.0.241015 + DB RU 19.25.0.0.241015  =
 ======================================================================================
