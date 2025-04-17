@@ -26,5 +26,6 @@ CURL_DB_PRECHECKS=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/head
 CURL_DB_POSTCHECKS=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/DB_Postchecks.sql 
 CURL_VALID_USERS=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/valid_users.txt 
 CURL_EMAIL=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/email_db_status.sql 
+CURL_AGENT_JDK=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/AgentJDK.sh
 
 
