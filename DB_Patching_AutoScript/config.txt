@@ -5,18 +5,20 @@ names=("SANDEEP" "VINAY" "ARISA" "PREM" "SUJOY" "ARCHIT" "PRASHANT" "SNEHITH")  
 
 
 PATCH_RELEASE=19.27.0.0.0
-COMBO_ZIP="p37262172_190000_Linux-x86-64.zip"
-#RU_ZIP="p36912597_190000_Linux-x86-64.zip"                   # Replace with your OPatch zip file - Static
-#OJVM_ZIP="p36878697_190000_Linux-x86-64.zip"                 # Replace with your OPatch zip file - Static
-JDK_ZIP="p37213431_190000_Linux-x86-64.zip"                 # Replace with your OPatch zip file - Static
+
 OPATCH_ZIP="p6880880_190000_Linux-x86-64.zip"                # Replace with your OPatch zip file - Static
 
+COMBO_ZIP="p37591483_190000_Linux-x86-64.zip"
+COMBO_PATCH_DIR=37591483                                    # Directory containing the patch zip file - St
+RU_PATCH_ID=37642901                                        # RU Patch ID - Static
+OJVM_PATCH_ID=37499406                                       # OJVM Patch ID - Static
 
-COMBO_PATCH_DIR=37262172                                    # Directory containing the patch zip file - Static
-RU_PATCH_ID=37260974                                         # RU Patch ID - Static
-OJVM_PATCH_ID=37102264                                       # OJVM Patch ID - Static
-JDK_PATCH_ID=37213431                                       # JDK Patch ID - Static
+JDK_ZIP="p37542054_190000_Linux-x86-64.zip"                 # Replace with your OPatch zip file - Static
+JDK_PATCH_ID=37542054                                       # JDK Patch ID - Static
 
+AGENT_JDK_ZIP="p37766455_180451_Linux-x86-64.zip"
+EM_JDK_PATCH="jdk-8u451-linux-x64.tar.gz"
+EM_JDK="jdk1.8.0_451"
 
 CURL_PULL_SCRIPT=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/pull_script.sh 
 CURL_OPATCH=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/wget_OPATCH.sh
@@ -27,5 +29,3 @@ CURL_DB_POSTCHECKS=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/hea
 CURL_VALID_USERS=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/valid_users.txt 
 CURL_EMAIL=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/email_db_status.sql 
 CURL_AGENT_JDK=https://raw.githubusercontent.com/SKTOMAR-max/ORADBA/refs/heads/main/DB_Patching_AutoScript/AgentJDK.sh
-
-
