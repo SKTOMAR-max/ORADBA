@@ -239,3 +239,1307 @@ AND T.tablespace = TBS.tablespace_name
 GROUP BY S.sid, S.serial#, S.username, S.osuser, P.spid, S.module, P.program, TBS.block_size, T.tablespace
 ORDER BY gb_used desc, sid_serial
 )
+
+
+
+==========================================================================================================================
+
+
+
+SELECT ' ALTER TABLE ' || OWNER || '.' || TABLE_NAME || ' MOVE TABLESPACE  TDNA_ADM_CDF_ENCRYPT;' FROM DBA_TABLES WHERE TABLESPACE_NAME='TDNA_ADM' AND PARTITIONED='NO';
+
+SELECT  'ALTER TABLE ' ||TABLE_OWNER||'.'||TABLE_NAME|| ' MOVE SUBPARTITION ' || SUBPARTITION_NAME || ' TABLESPACE TDNA_ADM_CDF_ENCRYPT;' FROM DBA_TAB_SUBPARTITIONS WHERE TABLESPACE_NAME='TDNA_ADM';
+
+SELECT 'ALTER TABLE ' ||TABLE_OWNER||'.'||TABLE_NAME|| ' MOVE PARTITION ' || PARTITION_NAME|| ' TABLESPACE TDNA_ADM_CDF_ENCRYPT;' FROM  DBA_TAB_PARTITIONS WHERE TABLESPACE_NAME='TDNA_ADM';
+
+SELECT 'ALTER TABLE '||OWNER||'.'||TABLE_NAME||' MOVE LOB('||COLUMN_NAME||') STORE AS (TABLESPACE TDNA_ADM_CDF_ENCRYPT);' FROM DBA_LOBS WHERE TABLESPACE_NAME='TDNA_ADM' AND PARTITIONED='NO';
+
+SELECT 'ALTER TABLE '||A.TABLE_OWNER||'.'||A.TABLE_NAME||' MOVE PARTITION '||A.PARTITION_NAME||' LOB('||A.COLUMN_NAME||') STORE AS (TABLESPACE TDNA_ADM_CDF_ENCRYPT);' FROM DBA_LOB_PARTITIONS A WHERE TABLESPACE_NAME='TDNA_ADM' ORDER BY TABLE_NAME;
+
+SELECT 'ALTER TABLE '||A.TABLE_OWNER||'.'||A.TABLE_NAME||' MOVE SUBPARTITION '||A.SUBPARTITION_NAME||' LOB('||A.COLUMN_NAME||') STORE AS (TABLESPACE TDNA_ADM_CDF_ENCRYPT);' FROM DBA_LOB_SUBPARTITIONS A WHERE TABLESPACE_NAME='TDNA_ADM' ORDER BY TABLE_NAME;
+
+SELECT 'ALTER TABLE '||OWNER||'.'||TABLE_NAME||' MOVE TABLESPACE TDNA_ADM_CDF_ENCRYPT;' FROM DBA_INDEXES WHERE TABLE_NAME IN (SELECT TABLE_NAME FROM DBA_TABLES WHERE IOT_TYPE='IOT') AND TABLESPACE_NAME='TDNA_ADM'; 
+
+SELECT ' ALTER INDEX ' || OWNER || '.' ||INDEX_NAME || ' REBUILD ONLINE TABLESPACE TDNA_ADM_CDF_ENCRYPT;'  || CHR(10)|| ' ALTER INDEX ' || OWNER || '.' ||INDEX_NAME ||  ' NOPARALLEL ; ' FROM DBA_INDEXES WHERE TABLESPACE_NAME='TDNA_ADM' AND PARTITIONED='NO';
+
+SELECT 'ALTER INDEX ' ||INDEX_OWNER||'.' || INDEX_NAME ||' REBUILD PARTITION ' || PARTITION_NAME || ' TABLESPACE TDNA_ADM_CDF_ENCRYPT;' FROM  DBA_IND_PARTITIONS WHERE TABLESPACE_NAME='TDNA_ADM';
+
+SELECT 'ALTER INDEX ' ||INDEX_OWNER||'.' || INDEX_NAME ||' REBUILD SUBPARTITION ' || SUBPARTITION_NAME || ' TABLESPACE TDNA_ADM_CDF_ENCRYPT;' FROM  DBA_IND_SUBPARTITIONS WHERE TABLESPACE_NAME='TDNA_ADM';
+
+SELECT 'ALTER TABLE '||OWNER||'.'||IOT_NAME||' MOVE TABLESPACE TDNA_ADM_CDF_ENCRYPT OVERFLOW TABLESPACE TDNA_ADM_CDF_ENCRYPT;' FROM DBA_TABLES WHERE IOT_TYPE IS NOT NULL AND TABLESPACE_NAME='TDNA_ADM';
+
+
+
+
+
+
+cd $ORACLE_HOME/bin
+chown root oradism
+chmod 4750 oradism
+bounce the database
+----------------------------------------
+Oradism binary does not have root privilege.
+Please verify if oradism has required privilege
+WARNING: -------------------------------
+WARNING: oradism did not start up correctly.
+Return code: 16 errno 0 info1 3040 info2 65535
+----------------------------------------
+
+
+=============
+== DB info ==
+=============
+
+set feedback off 
+set serveroutput on size 1000000 
+set linesize 512 
+set trimspool on 
+begin 
+     for x in ( select host_name,db.name as name,db.DB_UNIQUE_NAME as DB_UNIQUE_NAME,instance_name,version,to_char(startup_time,'DD-MON-YYYY HH24:MI:SS') as started, 
+     logins, db.database_role as db_role,db.open_mode as open_mode,SWITCHOVER_STATUS, INSTANCE_NUMBER,INSTANCE_ROLE, LOG_MODE, 
+     FORCE_LOGGING,floor(sysdate - startup_time) || trunc( 24*((sysdate-startup_time) - trunc(sysdate-startup_time))) 
+     || ' hour(s) ' || mod(trunc(1440*((sysdate-startup_time) - trunc(sysdate-startup_time))), 60) ||' minute(s) ' 
+     || mod(trunc(86400*((sysdate-startup_time) - trunc(sysdate-startup_time))), 60) ||' seconds' uptime 
+                from 
+                gv$instance , gv$database db 
+                where 
+                gv$instance.inst_id=db.inst_id ) 
+     loop 
+             dbms_output.put_line( CHR(13) || CHR(10)); 
+	     dbms_output.put_line( 'Hostname             : '||x.host_name); 
+             dbms_output.put_line( 'Database Name        : '||x.name); 
+             dbms_output.put_line( 'Database Unique Name : '||x.DB_UNIQUE_NAME); 
+             dbms_output.put_line( 'Database Version     : '||x.VERSION);
+             dbms_output.put_line( 'Database Role        : '||x.db_role); 
+             dbms_output.put_line( 'Open Mode     	 : '||x.open_mode); 
+             dbms_output.put_line( 'Instance #    	 : '||x.instance_number); 
+             dbms_output.put_line( 'Instance Name 	 : '||x.instance_name); 
+             dbms_output.put_line( 'Instance Role 	 : '||x.instance_role); 
+             dbms_output.put_line( 'LOGINS        	 : '||x.logins);
+             dbms_output.put_line( 'Switch-Over   	 : '||x.SWITCHOVER_STATUS); 
+             dbms_output.put_line( 'Log Mode      	 : '||x.log_mode); 
+             dbms_output.put_line( 'Force Logging 	 : '||x.force_logging); 
+             dbms_output.put_line( 'Started at    	 : '||x.started); 
+             dbms_output.put_line( 'Uptime        	 : '||x.uptime); 
+             dbms_output.put_line( CHR(13) || CHR(10)); 
+     end loop; 
+end; 
+/
+
+=======================================================================
+Error:  
+
+SQL> startup nomount 
+ORA-15180: could not open dynamic library odm library, error [open]
+
+
+1.	cd $OH/lib
+2.	ls  ltr *odm * (it will provide the library for which soft link is not able to create after relink) .
+3.	unlink libodm11.so (it will unlink the lib).
+4.	ln -s libodmd11.so libodm11.so (link the lib again).
+5.	Try to start the DB.
+
+After link, you will see softlink as below
+$ ls -ltr *odm*
+-rw-r--r-- 1 p2wbx1d1 oinstall  7402 Aug 24  2013 libodm11.a
+-rw-r--r-- 1 p2wbx1d1 oinstall 12291 Aug 24  2013 libodmd11.so
+-rw-r--r-- 1 p2wbx1d1 oinstall 61025 Aug 24  2013 libnfsodm11.so
+lrwxrwxrwx 1 p2wbx1d1 oinstall    12 May  9  2016 libodm11.so.orig -> libodmd11.so
+lrwxrwxrwx 1 p2wbx1d1 oinstall    12 Feb 26 09:14 libodm11.so -> libodmd11.so
+p2wbx1d1@flph519(135172) PS2WBTX /opt/app/p2wbx1d1/oracle/product/PS2WBTX/lib
+
+========================================
+Take output of query-
+
+SQL> SET LONG 20000 LONGCHUNKSIZE 20000 PAGESIZE 0 LINESIZE 1000 FEEDBACK OFF VERIFY OFF TRIMSPOOL ON 
+SQL> SELECT dbms_metadata.get_ddl('FUNCTION', 'ATT_PWD1' ,'SYS') txt from dual;
+
+=============================================
+Unable to loging after getting shared memory-
+
+$sqlplus /nolog 
+SQL> set _prelim on 
+SQL> conn / as sysdba 
+Prelim connection established 
+SQL> shutdown abort
+
+======================================
+/opt/app/p2gcp1d23/acfs/ggs/aud_20170213/
+
+mv `ls | head -50` /opt/app/p2gcp1d23/acfs/ggs/aud_20170213/
+
+======================================
+
+echo "P1POSAB rman arc backup is commented out" | mailx -s "`uname -n` - P1POSAB rman arc backup is commented out!" "wn4385@att.com"
+
+======================================
+
+
+select 'alter system kill session ''' ||sid|| ',' || serial#|| ''' immediate;' from v$session where username='JACKCACHEUSER16' ;
+
+
+cat $OH/log/ulpd339/cssd/ocssd.log |grep  master node  |tail -1
+
+=============================
+cat /dev/null > core
+
+=============================
+How to take crontab backup--
+
+crontab -l > crontab_30_01_2016_CHG000003296043
+==========================================================
+nohup $HOME/local/bin/orarman -s bliss -c BKUPARC -S 1d &
+
+nohup $HOME/local/bin/orarman -s bliss -c BKUPARC -S 1m &
+===========================
+
+Increase sort area to speed up index sorting ==> alter system set sort_area_size=100000000 deferred;
+
+
+==========================
+
+SQL> EXEC DBMS_SYSTEM.set_sql_trace_in_session(sid=>123, serial#=>1234, sql_trace=>TRUE);
+SQL> EXEC DBMS_SYSTEM.set_sql_trace_in_session(sid=>123, serial#=>1234, sql_trace=>FALSE);
+
+FRA
+=====
+
+SET LINES 300
+COL NAME FOR A30
+SELECT 
+NAME, 
+SPACE_LIMIT/1024/1024/1024 "SPACE_LIMIT IN GB",
+SPACE_USED/1024/1024/1024 "SPACE_USED IN GB",
+SPACE_RECLAIMABLE/1024/1024/1024 "SPACE_RECLAIMABLE IN GB",
+NUMBER_OF_FILES
+FROM 
+V$RECOVERY_FILE_DEST;
+
+select * from v$flash_recovery_area_usage;
+
+===================================================
+SQL> select * from gv$datafile_header where error is not null 
+no rows selected.
+
+SQL> alter system set log_archive_dest_1='LOCATION=+DATA01' scope=both sid='*'; 
+ 
+System altered.
+
+=====================================
+Query v_$instance to get the uptime:-
+=====================================
+
+SELECT D.NAME, D.DATABASE_ROLE, D.OPEN_MODE, to_char(startup_time,'DD-MON-YYYY HH24:MI:SS') "DB Startup Time"
+FROM sys.v$instance i, v$database d;
+
+&&
+
+SELECT host_name, 
+       instance_name,
+       TO_CHAR(startup_time, 'DD-MM-YYYY HH24:MI:SS') startup_time,
+       FLOOR(sysdate-startup_time) days
+FROM   sys.v_$instance;
+
+&&
+
+SELECT to_char(logon_time,'DD/MM/YYYY HH24:MI:SS')
+FROM v$session
+WHERE sid=1;
+
+========================================
+Query v$session to get database uptime:- 
+========================================
+
+SELECT TO_CHAR(logon_time, 'DD-MM-YYYY HH24:MI:SS')
+FROM v$session 
+WHERE program LIKE '%PMON%'
+
+
+======================================
+Maximum and Utlization of Processes
+======================================
+
+select RESOURCE_NAME, CURRENT_UTILIZATION, MAX_UTILIZATION from gv$resource_limit where RESOURCE_NAME = 'processes';
+
+set lines 300
+COL DATABASE_NAME FOR A20
+COL RESOURCE_NAME FOR A12
+select NAME "DATABASE_NAME", RESOURCE_NAME, MAX_UTILIZATION, CURRENT_UTILIZATION,  (MAX_UTILIZATION - CURRENT_UTILIZATION) "SESSION_AVAILABLE" from gv$resource_limit S, V$DATABASE D where RESOURCE_NAME = 'processes';
+
+=================
+DB_RECOVERY
+==================
+col name     format a32
+col size_mb  format 999,999,999
+col used_mb  format 999,999,999
+col pct_used format 999
+
+select
+   name,
+   ceil( space_limit / 1024 / 1024) size_mb,
+   ceil( space_used / 1024 / 1024) used_mb,
+   decode( nvl( space_used, 0),0, 0,
+   ceil ( ( space_used / space_limit) * 100) ) pct_used
+ from
+    v$recovery_file_dest
+order by
+   name desc;
+
+*********************************
+
+set lines 100
+col name format a60
+
+select 
+   name,
+   floor(space_limit / 1024 / 1024) "Size MB",
+   ceil(space_used / 1024 / 1024)   "Used MB"
+from 
+   v$recovery_file_dest
+order by 
+   name; 
+   
+=================
+Script: diag_info
+*****************
+
+SET LINESIZE 200
+COLUMN name FORMAT A30
+COLUMN value FORMAT A110
+
+SELECT *
+FROM   v$diag_info;
+
+=========================
+DATABASE UTILIZATION VIEW
+*************************
+
+SQL> 
+SET LINES 300
+select round(sum(used.bytes)/1024/1024 ) || ' MB' "Database Size", 
+round(free.p/1024/1024) || ' MB' "Free space" 
+from (select bytes from v$datafile  union all select bytes from v$tempfile union all select bytes from v$log) used, 
+(select sum(bytes) as p from dba_free_space) free group by free.p ;
+
+==============================================
+Script   Database structure and file location
+**********************************************
+
+set pagesize 500
+set linesize 130
+Prompt
+Prompt Control Files Location >>>>
+col name  format a60 heading "Control Files"
+
+select name
+from   sys.v_$controlfile
+/
+
+Prompt
+Prompt Redo Log File Locations >>>>
+Prompt
+
+col Grp    format 9999
+col member format a50 heading "Online REDO Logs"
+col File#  format 9999
+col name   format a50 heading "Online REDO Logs"
+break on Grp
+select group#,member
+from   sys.v_$logfile
+/
+
+
+Prompt Data Files Locations >>>>
+
+col Tspace    format a25
+col status    format a3  heading Sta
+col Id        format 9999
+col Mbyte     format 999999999
+col name      format a50 heading "Database Data Files"
+col Reads     format 99,999,999
+col Writes    format 99,999,999
+
+break on report
+compute sum label 'Total(MB)'  of Mbyte  on report
+
+select F.file_id Id,
+       F.file_name name,
+       F.bytes/(1024*1024) Mbyte,
+       decode(F.status,'AVAILABLE','OK',F.status) status,
+       F.tablespace_name Tspace
+from   sys.dba_data_files F
+order by tablespace_name;
+
+
+=============
+ROW CHAINING
+************
+
+set pages 9999;
+column c1 heading "Owner"   format a9;
+column c2 heading "Table"   format a30;
+column c3 heading "PCTFREE" format 99;
+column c4 heading "PCTUSED" format 99;
+column c5 heading "avg row" format 99,999;
+column c6 heading "Rows"    format 999,999,999;
+column c7 heading "Chains"  format 999,999,999;
+column c8 heading "Pct"     format .99; 
+set heading off;
+select 'Tables with migrated/chained rows and no RAW columns.' from dual;
+set heading on;
+select 
+   owner              c1, 
+   table_name         c2, 
+   pct_free           c3, 
+   pct_used           c4, 
+   avg_row_len        c5, 
+   num_rows           c6, 
+   chain_cnt          c7,
+   chain_cnt/num_rows c8
+from dba_tables
+where
+owner not in ('SYS','SYSTEM')
+and
+table_name not in
+ (select table_name from dba_tab_columns
+   where
+ data_type in ('RAW','LONG RAW','CLOB','BLOB','NCLOB')
+ )
+and
+chain_cnt > 0
+order by chain_cnt desc
+;
+
+==================
+Fragmented objects
+******************
+
+SELECT UT.OWNER "OWNER" , UT.TABLE_NAME "TABLE NAME", 
+ROUND(UT.NUM_ROWS*UT.AVG_ROW_LEN/1024/1024,2) "CALCULATED SIZE MB", 
+ROUND(US.BYTES/1024/1024,2) "ALLOCATED SIZE MB", 
+ROUND(US.BYTES/(UT.NUM_ROWS*UT.AVG_ROW_LEN),2) "TIMES LARGER"
+FROM DBA_TABLES UT, DBA_SEGMENTS US
+WHERE (UT.NUM_ROWS > 0 AND UT.AVG_ROW_LEN > 0 AND US.BYTES > 0)
+AND UT.PARTITIONED = 'NO'
+AND UT.IOT_TYPE IS NULL
+AND UT.IOT_NAME IS NULL
+AND UT.TABLE_NAME = US.SEGMENT_NAME
+AND ROUND(US.BYTES/1024/1024,2) > 1024
+AND ROUND(US.BYTES/1024/1024,2) > 
+(ROUND(UT.NUM_ROWS*UT.AVG_ROW_LEN/1024/1024,2)* 2) ORDER BY 4 DESC ;
+
+================
+REDO LOGS STATUS
+****************
+set lines 300
+SELECT GROUP#, THREAD#, BYTES, MEMBERS,STATUS FROM V$LOG;
+1	52428800	2	in
+2			2	c
+3			2	i
+4	104857600
+
+
+or
+
+select l.group#, lf.member, l.bytes/1024/1024 mb,  l.status, l.archived
+from v$logfile lf, v$log l
+where l.group# = lf.group#
+order by 1, 2;
+
+=====================
+ARCHIVE LOG GENRATION 
+*********************
+
+set lines 300
+
+SELECT to_date(first_time) DAY, to_char(sum(decode(to_char(first_time,'HH24'),'00',1,0)),'999') "00",
+to_char(sum(decode(to_char(first_time,'HH24'),'01',1,0)),'999') "01",
+to_char(sum(decode(to_char(first_time,'HH24'),'02',1,0)),'999') "02",
+to_char(sum(decode(to_char(first_time,'HH24'),'03',1,0)),'999') "03",
+to_char(sum(decode(to_char(first_time,'HH24'),'04',1,0)),'999') "04",
+to_char(sum(decode(to_char(first_time,'HH24'),'05',1,0)),'999') "05",
+to_char(sum(decode(to_char(first_time,'HH24'),'06',1,0)),'999') "06",
+to_char(sum(decode(to_char(first_time,'HH24'),'07',1,0)),'999') "07",
+to_char(sum(decode(to_char(first_time,'HH24'),'08',1,0)),'999') "08",
+to_char(sum(decode(to_char(first_time,'HH24'),'09',1,0)),'999') "09",
+to_char(sum(decode(to_char(first_time,'HH24'),'10',1,0)),'999') "10",
+to_char(sum(decode(to_char(first_time,'HH24'),'11',1,0)),'999') "11",
+to_char(sum(decode(to_char(first_time,'HH24'),'12',1,0)),'999') "12",
+to_char(sum(decode(to_char(first_time,'HH24'),'13',1,0)),'999') "13",
+to_char(sum(decode(to_char(first_time,'HH24'),'14',1,0)),'999') "14",
+to_char(sum(decode(to_char(first_time,'HH24'),'15',1,0)),'999') "15",
+to_char(sum(decode(to_char(first_time,'HH24'),'16',1,0)),'999') "16",
+to_char(sum(decode(to_char(first_time,'HH24'),'17',1,0)),'999') "17",
+to_char(sum(decode(to_char(first_time,'HH24'),'18',1,0)),'999') "18",
+to_char(sum(decode(to_char(first_time,'HH24'),'19',1,0)),'999') "19",
+to_char(sum(decode(to_char(first_time,'HH24'),'20',1,0)),'999') "20",
+to_char(sum(decode(to_char(first_time,'HH24'),'21',1,0)),'999') "21",
+to_char(sum(decode(to_char(first_time,'HH24'),'22',1,0)),'999') "22",
+to_char(sum(decode(to_char(first_time,'HH24'),'23',1,0)),'999') "23"
+from v$log_history where to_date(first_time) > sysdate -30 GROUP by to_char(first_time,'YYYY-MON-DD'),
+to_date(first_time) order by to_date(first_time)
+;
+
+OR
+---
+
+SET PAUSE ON
+SET PAUSE 'Press Return to Continue'
+SET PAGESIZE 60
+SET LINESIZE 300
+SET VERIFY OFF
+ 
+COL "Generation Date" FORMAT a20
+ 
+SELECT TRUNC(completion_time)  "Generation Date" ,
+   round(SUM(blocks*block_size)/1048576,0) "Total for the Day in MB"
+FROM gv$archived_log
+GROUP BY TRUNC(completion_time)
+ORDER BY TRUNC(completion_time)
+/
+
+OR
+---
+
+set pages 1000
+select trunc(COMPLETION_TIME,'DD') Day, thread#, round(sum(BLOCKS*BLOCK_SIZE)/1048576) MB,count(*) Archives_Generated from v$archived_log
+group by trunc(COMPLETION_TIME,'DD'),thread# order by 1;
+
+OR
+---
+
+set pages 1000
+select trunc(COMPLETION_TIME,'HH') Hour,thread# , round(sum(BLOCKS*BLOCK_SIZE)/1048576) MB,count(*) Archives from v$archived_log
+group by trunc(COMPLETION_TIME,'HH'),thread#  order by 1 ;
+
+OR
+---
+
+SELECT SUM_ARCH.DAY,
+         SUM_ARCH.GENERATED_MB,
+         SUM_ARCH_DEL.DELETED_MB,
+         SUM_ARCH.GENERATED_MB - SUM_ARCH_DEL.DELETED_MB "REMAINING_MB"
+    FROM (  SELECT TO_CHAR (COMPLETION_TIME, 'DD/MM/YYYY') DAY,
+                   SUM (ROUND ( (blocks * block_size) / (1024 * 1024), 2))
+                      GENERATED_MB
+              FROM V$ARCHIVED_LOG
+             WHERE ARCHIVED = 'YES'
+          GROUP BY TO_CHAR (COMPLETION_TIME, 'DD/MM/YYYY')) SUM_ARCH,
+         (  SELECT TO_CHAR (COMPLETION_TIME, 'DD/MM/YYYY') DAY,
+                   SUM (ROUND ( (blocks * block_size) / (1024 * 1024), 2))
+                      DELETED_MB
+              FROM V$ARCHIVED_LOG
+             WHERE ARCHIVED = 'YES' AND DELETED = 'YES'
+          GROUP BY TO_CHAR (COMPLETION_TIME, 'DD/MM/YYYY')) SUM_ARCH_DEL
+   WHERE SUM_ARCH.DAY = SUM_ARCH_DEL.DAY(+)
+ORDER BY TO_DATE (DAY, 'DD/MM/YYYY');
+=========
+HIT RATIO
+================
+Buffer Hit Ratio
+****************
+BUFFER HIT RATIO NOTES:
+# Consistent Gets - The number of accesses made to the block buffer to retrieve data in a consistent mode.
+# DB Blk Gets - The number of blocks accessed via single block gets (i.e. not through the consistent get mechanism).
+# Physical Reads - The cumulative number of blocks read from disk.
+
+# Logical reads are the sum of consistent gets and db block gets.
+# The db block gets statistic value is incremented when a block is read for update and when segment header blocks are accessed.
+# Hit Ratio should be > 80%, else increase DB_BLOCK_BUFFERS in init.ora
+
+select sum(decode(NAME, 'consistent gets',VALUE, 0)) "Consistent Gets",
+sum(decode(NAME, 'db block gets',VALUE, 0)) "DB Block Gets",
+sum(decode(NAME, 'physical reads',VALUE, 0)) "Physical Reads",
+round((sum(decode(name, 'consistent gets',value, 0)) + 
+sum(decode(name, 'db block gets',value, 0)) - 
+sum(decode(name, 'physical reads',value, 0))) / 
+(sum(decode(name, 'consistent gets',value, 0)) + 
+sum(decode(name, 'db block gets',value, 0))) * 100,2) "Hit Ratio"
+from v$sysstat;
+
+===================
+Data Dict Hit Ratio
+*******************
+DATA DICTIONARY HIT RATIO NOTES:
+# Gets - Total number of requests for information on the data object.
+# Cache Misses - Number of data requests resulting in cache misses
+
+# Hit Ratio should be > 90%, else increase SHARED_POOL_SIZE in init.ora
+
+select sum(GETS),sum(GETMISSES),round((1 - (sum(GETMISSES) / sum(GETS))) * 100,2) from v$rowcache;
+
+===========================
+SQL/Library Cache Hit Ratio
+***************************
+SQL CACHE HIT RATIO NOTES:
+# Pins - The number of times a pin was requested for objects of this namespace.
+# Reloads - Any pin of an object that is not the first pin performed since the object handle was created, and which requires loading the object from disk.
+
+# Hit Ratio should be > 85%
+
+select sum(PINS) Pins,sum(RELOADS) Reloads,round((sum(PINS) - sum(RELOADS)) / sum(PINS) * 100,2) Hit_Ratio from V$librarycache;
+
+========================
+Library Cache Miss Ratio
+************************
+LIBRARY CACHE MISS RATIO NOTES:
+# Executions - The number of times a pin was requested for objects of this namespace.
+# Cache Misses - Any pin of an object that is not the first pin performed since the object handle was created, and which requires loading the object from disk.
+
+# Hit Ratio should be < 1%, else increase SHARED_POOL_SIZE in init.ora=====================================================
+LAST TIME STATISTICS HAVE BEEN COLLECTED ON THE TABLE
+*****************************************************
+
+select table_name, last_analyzed
+from dba_tables
+order by last_analyzed desc nulls last;
+
+
+=========================================
+QUERY TO FIND THE 10 LARGEST OBJECT IN DB
+*****************************************
+
+COL SEGMENT_NAME FOR A30
+SET LINES 200
+SELECT * FROM
+(
+select 
+    SEGMENT_NAME, 
+    SEGMENT_TYPE, 
+    BYTES/1024/1024/1024 GB, 
+    TABLESPACE_NAME 
+from 
+    dba_segments
+order by 3 desc  
+) WHERE
+ROWNUM <= 10;
+
+======================================
+FIND THE INVALID INDEX IN THE DATABASE
+**************************************
+
+select OWNER, INDEX_NAME, INDEX_TYPE, TABLE_OWNER,TABLE_NAME from dba_indexes WHERE STATUS='INVALID';
+
+
+=======================
+Script for MAX-Shrink:-
+***********************
+
+set linesize 400
+col tablespace_name format a15
+col file_size format 99999
+col file_name format a50
+col hwm format 99999
+col can_save format 99999
+SELECT tablespace_name, file_name, file_size, hwm, file_size-hwm can_save
+FROM (SELECT /*+ RULE */ ddf.tablespace_name, ddf.file_name file_name,
+ddf.bytes/1048576 file_size,(ebf.maximum + de.blocks-1)*dbs.db_block_size/1048576 hwm
+FROM dba_data_files ddf,(SELECT file_id, MAX(block_id) maximum FROM dba_extents GROUP BY file_id) ebf,dba_extents de,
+(SELECT value db_block_size FROM v$parameter WHERE name='db_block_size') dbs
+WHERE ddf.file_id = ebf.file_id
+AND de.file_id = ebf.file_id
+AND de.block_id = ebf.maximum
+ORDER BY 1,2);
+
+--------------------------------------------------------
+set verify off
+column file_name format a50 word_wrapped
+column smallest format 999,990 heading "Smallest|Size|Poss."
+column currsize format 999,990 heading "Current|Size"
+column savings  format 999,990 heading "Poss.|Savings"
+break on report
+compute sum of savings on report
+column value new_val blksize
+select value from v$parameter where name = 'db_block_size';
+/
+select file_name,
+       ceil( (nvl(hwm,1)*&&blksize)/1024/1024 ) smallest,
+       ceil( blocks*&&blksize/1024/1024) currsize,
+       ceil( blocks*&&blksize/1024/1024) -
+       ceil( (nvl(hwm,1)*&&blksize)/1024/1024 ) savings
+from dba_data_files a,
+     ( select file_id, max(block_id+blocks-1) hwm
+         from dba_extents
+        group by file_id ) b
+where a.file_id = b.file_id(+) order by savings desc
+/
+
+=====================
+FIND THE REDO WASTAGE
+*********************
+
+SQL> select name,value from v$sysstat where name='redo wastage';
+
+============
+CHARACTERSET
+***********
+
+select * from nls_database_parameters
+
+
+=========================
+Find the Invalid Objects
+*************************
+
+COLUMN object_name FORMAT A30
+SELECT owner,
+       object_type,
+       object_name,
+       status
+FROM   dba_objects
+WHERE  status = 'INVALID'
+and owner='SYS' 
+ORDER BY owner, object_type, object_name;
+
+
+Recompile the invalid objects
+-----------------------------
+
+-- Schema level.
+EXEC UTL_RECOMP.recomp_serial('SYS');
+EXEC UTL_RECOMP.recomp_parallel(4, 'SYS');
+
+-- Database level.
+EXEC UTL_RECOMP.recomp_serial();
+EXEC UTL_RECOMP.recomp_parallel(4);
+
+-- Using job_queue_processes value.
+EXEC UTL_RECOMP.recomp_parallel();
+EXEC UTL_RECOMP.recomp_parallel(NULL, 'SCOTT');
+
+======================
+Check block curreption
+**********************
+
+set pagesize 2000 
+set linesize 280 
+select * from V$DATABASE_BLOCK_CORRUPTION; 
+
+SELECT e.owner, e.segment_type, e.segment_name, e.partition_name, c.file# 
+, greatest(e.block_id, c.block#) corr_start_block# 
+, least(e.block_id+e.blocks-1, c.block#+c.blocks-1) corr_end_block# 
+, least(e.block_id+e.blocks-1, c.block#+c.blocks-1) 
+- greatest(e.block_id, c.block#) + 1 blocks_corrupted 
+, corruption_type description 
+FROM dba_extents e, v$database_block_corruption c 
+WHERE e.file_id = c.file# 
+AND e.block_id <= c.block# + c.blocks - 1 
+AND e.block_id + e.blocks - 1 >= c.block# 
+UNION 
+SELECT s.owner, s.segment_type, s.segment_name, s.partition_name, c.file# 
+, header_block corr_start_block# 
+, header_block corr_end_block# 
+, 1 blocks_corrupted 
+, corruption_type||' Segment Header' description 
+FROM dba_segments s, v$database_block_corruption c 
+WHERE s.header_file = c.file# 
+AND s.header_block between c.block# and c.block# + c.blocks - 1 
+UNION 
+SELECT null owner, null segment_type, null segment_name, null partition_name, c.file# 
+, greatest(f.block_id, c.block#) corr_start_block# 
+, least(f.block_id+f.blocks-1, c.block#+c.blocks-1) corr_end_block# 
+, least(f.block_id+f.blocks-1, c.block#+c.blocks-1) 
+- greatest(f.block_id, c.block#) + 1 blocks_corrupted 
+, 'Free Block' description 
+FROM dba_free_space f, v$database_block_corruption c 
+WHERE f.file_id = c.file# 
+AND f.block_id <= c.block# + c.blocks - 1 
+AND f.block_id + f.blocks - 1 >= c.block# 
+order by file#, corr_start_block#;
+
+=================
+FIND THE OBJ SIZE
+*****************
+
+SET LINES 300
+
+select OWNER,segment_name,segment_type,bytes/1024/1024 MB
+  from dba_segments
+  where segment_type='&SEGMENT_TYPE' and segment_name='&INDEX_OR_TABLE_NAME';
+
+==========================
+Find the blocking Session-
+**************************
+
+set lines 300
+select
+c.owner||' * '||
+c.object_name||' * '||
+c.object_type||' * '||
+b.sid||' * '||
+b.serial#||' * '||
+b.status||' * '||
+b.osuser||' * '||
+b.machine||' * '||
+a.LOCKED_MODE
+from
+v$locked_object a ,
+v$session b,
+dba_objects c
+where
+b.sid = a.session_id
+and
+a.object_id = c.object_id;
+
+&&&&&&&&&&&&&&&&&&&&&&&&&
+
+set pages 1000
+set linesize 190
+col username for a10
+select b.status,a.inst_id,a.PID "Ora PID",a.SPID "Server PID",
+a.LATCHWAIT,b.Program, b.Username,b.Osuser,b.machine,
+b.terminal,a.terminal,b.Process "Client Process"
+from gv$process a,gv$session b where a.addr=b.paddr and b.sid=&1
+/
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&
+Kill a Session
+**************
+
+ALTER SYSTEM KILL SESSION  sid,serial# ;
+alter system kill session '76,39808';
+
+select 'alter system kill session '''||sid||','||serial#||''';'
+from v$session
+where sid=&1;
+
+=================
+Remove Trace File
+*****************
+
+find . -mtime +10 -exec cp {} /export/home/oracle/log/ \;
+
+
+find . -mtime +10 -exec rm {} \;
+
+
+==================================================
+Recipie #1 - find blocking sessions with v$session
+**************************************************
+
+SELECT
+   s.blocking_session, 
+   s.sid, 
+   s.serial#, 
+   s.seconds_in_wait
+FROM
+   v$session s
+WHERE
+   blocking_session IS NOT NULL
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+Recipie #2 - find blocking sessions using v$lock
+*************************************************
+
+SELECT 
+   l1.sid || ' is blocking ' || l2.sid blocking_sessions
+FROM 
+   v$lock l1, v$lock l2
+WHERE
+   l1.block = 1 AND
+   l2.request > 0 AND
+   l1.id1 = l2.id1 AND
+   l1.id2 = l2.id2
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+Recipie #3 - blocking sessions with all available information
+*************************************************************
+
+SELECT s1.username || '@' || s1.machine
+    || ' ( SID=' || s1.sid || ' )  is blocking '
+    || s2.username || '@' || s2.machine || ' ( SID=' || s2.sid || ' ) ' AS blocking_status
+    FROM v$lock l1, v$session s1, v$lock l2, v$session s2
+    WHERE s1.sid=l1.sid AND s2.sid=l2.sid
+    AND l1.BLOCK=1 AND l2.request > 0
+    AND l1.id1 = l2.id1
+    AND l2.id2 = l2.id2 ;
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+Recipie #4 - identifying blocked objects
+*****************************************
+
+SELECT sid, id1 FROM v$lock WHERE TYPE='TM';
+SID	ID1
+92	20127
+51	20127
+
+The ID you get from this query refers to the actual database object which can help you to identify the problem, look at the next query:
+
+SELECT object_name FROM dba_objects WHERE object_id=20127
+
+
+====================
+Purging AWR reports
+====================
+
+col "Space (M)" for 999,999.99  
+
+set lines 300
+col OCCUPANT_NAME for a30
+col SCHEMA_NAME for a20
+SELECT 
+occupant_name,  
+round( space_usage_kbytes/1024) "Space (M)",  
+schema_name, 
+move_procedure
+FROM 
+v$sysaux_occupants  
+ORDER BY 1  ;
+
+
+col BEGIN_INTERVAL_TIME for a30
+col END_INTERVAL_TIME for a30
+SELECT 
+  snap_id, begin_interval_time, end_interval_time 
+  FROM 
+  SYS.WRM$_SNAPSHOT 
+  WHERE 
+  snap_id = ( SELECT MIN (snap_id) FROM SYS.WRM$_SNAPSHOT)
+  UNION 
+  SELECT 
+  snap_id, begin_interval_time, end_interval_time 
+  FROM 
+  SYS.WRM$_SNAPSHOT 
+  WHERE 
+ snap_id = ( SELECT MAX (snap_id) FROM SYS.WRM$_SNAPSHOT) ;
+
+
+==>dbms_workload_repository package to remove the AWR snapshots.
+
+BEGIN                                                               
+  dbms_workload_repository.drop_snapshot_range(low_snap_id => 7556, high_snap_id=>15000);                                         
+END;
+/
+ 
+
+=======================
+DBMS_JOB disable/enable
+***********************
+
+select job, LOG_USER,BROKEN,WHAT from dba_jobs where job=&JOB;
+
+select * from dba_jobs_running;
+
+
+--> To disable all jobs on the system use the following SQL statement to generate your SQL:
+ select 'exec dbms_ijob.broken('||job||',true);' from dba_jobs; 
+
+SQL> select 'exec dbms_ijob.broken('||job||',true);' from dba_jobs;
+
+
+--> To re-enable all jobs on the system use the following SQL statement to generate your SQL:
+ select 'exec dbms_ijob.broken('||job||',false);' from dba_jobs; 
+
+SQL> select 'exec dbms_ijob.broken('||job||',false);' from dba_jobs;
+
+or 
+--> for disabling dbms_job
+
+alter system set job_queue_processes=0 scope=both;
+
+
+
+================================
+Dead lock detection and release-
+********************************
+
+You can try this :
+
+SQL> select object_id from dba_objects where object_name='T1';
+
+OBJECT_ID
+----------
+53147
+
+SQL> select * from v$locked_object where object_id=53147;
+
+XIDUSN XIDSLOT XIDSQN OBJECT_ID SESSION_ID
+---------- ---------- ---------- ---------- ----------
+ORACLE_USERNAME OS_USER_NAME PROCESS
+------------------------------ ------------------------------ ------------
+LOCKED_MODE
+-----------
+9 25 434 53147 152
+SYS Mohamed\Administrator 276:3556
+3
+
+SQL> select sid, serial#, command, taddr from v$session where sid=152;
+
+SID SERIAL# COMMAND TADDR
+---------- ---------- ---------- --------
+152 173 0 6BE098EC
+
+SQL> alter system kill session '152,173';
+
+System altered.
+
+SQL> select * from v$locked_object where object_id=53147;
+
+no rows selected
+
+
+&&&&&&&&&&&&&&&&&&
+Database DeadLocks
+******************
+
+col username form A15
+col sid form 9990
+col type form A4
+col lmode form 990
+col request form 990
+col id1 form 9999990
+col id2 form 9999990
+
+SELECT sn.username, m.sid, m.type,
+   DECODE(m.lmode, 0, 'None'
+                 , 1, 'Null'
+                 , 2, 'Row Share'
+                 , 3, 'Row Excl.'
+                 , 4, 'Share'
+                 , 5, 'S/Row Excl.'
+                 , 6, 'Exclusive'
+                 , lmode, ltrim(to_char(lmode,'990'))) lmode,
+   DECODE(m.request, 0, 'None'
+                 , 1, 'Null'
+                 , 2, 'Row Share'
+                 , 3, 'Row Excl.'
+                 , 4, 'Share'
+                 , 5, 'S/Row Excl.'
+                 , 6, 'Exclusive'
+                 , request, ltrim(to_char(request,'990'))) request,
+         m.id1,m.id2
+FROM v$session sn, V$lock m
+WHERE (sn.sid = m.sid AND m.request != 0)
+   OR (sn.sid = m.sid
+      AND m.request = 0 AND lmode != 4
+      AND (id1, id2 ) IN (SELECT s.id1, s.id2
+                          FROM v$lock s
+                          WHERE request != 0
+                                 AND s.id1 = m.id1
+                                 AND s.id2 = m.id2 )
+      )
+ORDER BY id1,id2, m.request;
+
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+SQL Text for a Particular Session SID/ users current sql
+********************************************************
+
+select sql_text from v$sqltext t, v$session s
+   where t.address = s.sql_address
+   and s.sid = &SID
+   order by piece;
+
+=================================================
+Long running Operations in Oracle
+*************************************************
+
+select * from (
+  select opname, target, sofar, totalwork,
+         units, elapsed_seconds, message
+  from v$session_longops order by start_time desc)
+where rownum <=1;
+
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+SET LINESIZE 200
+
+COLUMN operation FORMAT a15 
+COLUMN username FORMAT a15 
+COLUMN object FORMAT a30
+
+SELECT a.sid, 
+      a.serial#, 
+      b.username , 
+      opname OPERATION, 
+      target OBJECT, 
+      TRUNC(elapsed_seconds, 5) "ET (s)", 
+      TO_CHAR(start_time, 'HH24:MI:SS') start_time, 
+      ROUND((sofar/totalwork)*100, 2) "COMPLETE (%)" 
+ FROM v$session_longops a, 
+      v$session b 
+WHERE a.sid = b.sid AND 
+     b.username not IN ('SYS', 'SYSTEM') AND 
+     totalwork > 0 
+ORDER BY elapsed_seconds;
+
+==============
+Stats gather
+------------
+
+set lines 200
+col OPNAME for a25
+
+Select
+a.sid,
+a.serial#,
+b.status,
+a.opname,
+to_char(a.START_TIME,' dd-Mon-YYYY HH24:mi:ss') START_TIME,
+to_char(a.LAST_UPDATE_TIME,' dd-Mon-YYYY HH24:mi:ss') LAST_UPDATE_TIME,
+a.time_remaining as "Time Remaining Sec" ,
+a.time_remaining/60 as "Time Remaining Min",
+a.time_remaining/60/60 as "Time Remaining HR"
+From v$session_longops a, v$session b
+where a.sid = b.sid
+and a.sid =&sid
+And time_remaining > 0;
+
+==================================================
+Script   Monitor sessions with high Physical Reads
+**************************************************
+
+set linesize 120
+col osuser format a10
+col username format 10
+select
+OSUSER osuser,
+username,
+PROCESS pid,
+ses.SID sid,
+SERIAL#,
+PHYSICAL_READS,
+BLOCK_CHANGES
+from v$session ses,
+v$sess_io sio
+where ses.SID = sio.SID
+and ses.sid=7440
+order by PHYSICAL_READS;
+
+====================================================
+Script   List SQL being executed by a particular SID
+****************************************************
+
+col sql_text format a100 heading "Current SQL"
+select q.sql_text
+from v$session s
+, v$sql q
+WHERE s.sql_address = q.address
+and s.sql_hash_value + DECODE
+(SIGN(s.sql_hash_value), -1, POWER( 2, 32), 0) = q.hash_value
+AND s.sid=&1;
+
+
+=========================================================
+Script   Find SQL being executed by a OS Process ID (PID)
+*********************************************************
+
+prompt "Please Enter The UNIX Process ID"
+set pagesize 50000
+set linesize 30000
+set long 500000
+set head off
+select
+s.username su,
+substr(sa.sql_text,1,540) txt
+from v$process p,
+v$session s,
+v$sqlarea sa
+where p.addr=s.paddr
+and s.username is not null
+and s.sql_address=sa.address(+)
+and s.sql_hash_value=sa.hash_value(+)
+and spid=&SPID;
+
+=============================================
+Script   Datafiles with highest I/O activity
+*********************************************
+
+col name format a40
+set linesize 140
+select * from (
+select name,phyrds, phywrts,readtim,writetim
+from v$filestat a, v$datafile b
+where a.file#=b.file#
+order by readtim desc) where rownum <6;
+
+====================================================
+Script   Sessions Waiting On A Particular Wait Event
+****************************************************
+
+SELECT count(*), event
+FROM v$session_wait
+WHERE wait_time = 0
+AND event NOT IN ('smon timer','pipe get','wakeup time manager',
+'pmon timer','rdbms ipc message', 'SQL*Net message from client')
+GROUP BY event
+ORDER BY 1 DESC;
+
+=================================================
+Script   What Wait Events Are Sessions Waiting On
+*************************************************
+
+set linesize 120
+col username format a10
+col event format a30
+ 
+select sid, serial#,username, event,
+seconds_in_wait, wait_time
+from v$session where state = 'WAITING'
+and wait_class != 'Idle'
+order by event
+;
+
+===============================================
+Script   List status of all submitted DBMS jobs
+***********************************************
+
+set pagesize 100
+set linesize 120
+ttitle -
+  center  'Submitted DBMS Jobs' skip 2
+
+col job  format 99999  heading 'job#'
+col subu format a10  heading 'Submitter'     trunc
+col lsd  format a5   heading 'Last|Ok|Date'
+col lst  format a5   heading 'Last|Ok|Time'
+col nrd  format a5   heading 'Next|Run|Date'
+col nrt  format a5   heading 'Next|Run|Time'
+col fail format 999  heading 'Errs'
+col ok   format a2   heading 'Ok'
+
+
+select
+  job,
+  log_user                   subu,
+  what                       proc,
+  to_char(last_date,'MM/DD') lsd,
+  substr(last_sec,1,5)       lst,
+  to_char(next_date,'MM/DD') nrd,
+  substr(next_sec,1,5)       nrt,
+  failures                   fail,
+  decode(broken,'Y','N','Y') ok
+from
+  sys.dba_jobs;
+
+===============================================
+Waiting for
+*************
+
+ set pages 1000
+ set linesize 180
+col username for a10
+ col module for a10
+ col event for a30
+ select a.INST_ID,a.sid,b.serial#,b.username,substr(b.module,1,10) Module,a.event,a.p1,substr(a.p1raw,1,25) p1raw,a.p2,a.p3,a.state,a.wait_time
+  from gv$session_wait a, gv$session b
+  where a.event not in ('SQL*Net message from client','wakeup time manager','pipe get',
+  'rdbms ipc message','smon timer','pmon timer','null event','jobq slave wait') and a.sid=b.sid and a.wait_class#!=6;
+
+===========================================
+Database Statistics (how much is remaining)
+*******************************************
+set lines 200
+col OPNAME for a25
+
+Select
+a.sid,
+a.serial#,
+b.status,
+a.opname,
+to_char(a.START_TIME,' dd-Mon-YYYY HH24:mi:ss') START_TIME,
+to_char(a.LAST_UPDATE_TIME,' dd-Mon-YYYY HH24:mi:ss') LAST_UPDATE_TIME,
+a.time_remaining as "Time Remaining Sec" ,
+a.time_remaining/60 as "Time Remaining Min",
+a.time_remaining/60/60 as "Time Remaining HR"
+From v$session_longops a, v$session b
+where a.sid = b.sid
+and a.sid =&sid
+And time_remaining > 0;
+
+=============================================================================
+To find a list of all users with DBA privilege execute the following code:
+=============================================================================
+SQL> select * from dba_role_privs where granted_role='DBA';
+
+
+
+
+
+
+====================================================
+size of the redo log members (files on disk) size
+====================================================
+
+set linesize 300
+column REDOLOG_FILE_NAME format a50
+SELECT
+    a.GROUP#,
+    a.THREAD#,
+    a.SEQUENCE#,
+    a.ARCHIVED,
+    a.STATUS,
+    b.MEMBER    AS REDOLOG_FILE_NAME,
+    (a.BYTES/1024/1024) AS SIZE_MB
+FROM v$log a
+JOIN v$logfile b ON a.Group#=b.Group# 
+ORDER BY a.GROUP# ASC;
+
+
+========================
+SGA, PGA, MEMORY ADVICE
+========================
+
+select * from v$memory_target_advice;
+SELECT * FROM V$SGA_TARGET_ADVICE;
+SELECT * FROM V$PGA_TARGET_ADVICE;
+
+
+
+Gather Stats
+------------
+
+select table_name , LAST_ANALYZED from dba_tables 
+where table_name in ('ADDRESS_DATA', 
+'ADDRESS_NAME_LINK', 
+'BILL', 
+'ACCOUNT', 
+'BILLING_PARAMETERS', 
+'CHURN_VALUE', 
+'CONTRACT', 
+'CPNI_PREF_HIST', 
+'EMAIL_DATA', 
+'FAN_INFO', 
+'GROUP_LEVEL', 
+'NAME_DATA', 
+'PAYMENT_ACTIVITY', 
+'SESSION_INFO', 
+'SUB_FAN_INFO', 
+'SUBSCRIBER', 
+'TAX_EXEMP_ENTITIES', 
+'SERVICE_AGREEMENT', 
+'COMBINE_BILL_ATTR_RAW', 
+'CO_PAY_ENROL', 
+'BL_ARREAR_REQ_RAW', 
+'TITAN_INFO_RAW', 
+'PURCHASE_ORDER', 
+'BAN_DISCOUNT', 
+'SERVICE_FEATURE', 
+'PHYSICAL_DEVICE', 
+'M2AN_CALL_LIST', 
+'INVOICE_ITEM', 
+'CUSTOMIZED_FEATURE', 
+'CUSTOMER_RAW', 
+'CTN_INV_RAW', 
+'COMBINE_BILL_HISTORY') order by 2;
+
+
+**********************
+* Active Tranactions *
+**********************
+set pages 1000
+set linesize 190
+col "O/S-User" for a10
+col "Ora-User" for a10
+col "Rollback" for a11
+select s.osuser "O/S-User", s.username "Ora-User", s.sid "Ses-ID",
+s.serial# "Serial", s.process "Proc-ID", s.status "Status", r.name "Rollback", 
+l.name "Obj Locked", l.mode_held "Lock Mode", t.log_io "Log I/O",
+t.phy_io "Phy I/O", t.used_ublk "undo blks", t.used_urec "undo recs",
+st.sql_text "Sql Text"
+from v$session s, v$transaction t, v$rollname r, v$process p, v$sqltext st,
+dba_dml_locks l
+where s.taddr = t.addr and l.session_id = s.sid and t.xidusn = r.usn and
+p.addr = s.paddr and s.sql_address = st.address and st.piece = 0
+/
+
